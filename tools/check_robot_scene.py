@@ -325,9 +325,14 @@ def main() -> None:
     if args.device.startswith("cuda"):
         torch.cuda.synchronize(args.device)
     height = sim.data.qpos[:, 2] - scene.env_origins[:, 2]
-    if height.min() < 0.15:
+    # The guard is relative to HOME because the crouched stance is ~1.3 cm lower
+    # than a straight-legged one; an absolute threshold would either be vacuous
+    # for the old pose or trip on a healthy crouch.
+    home_height = float(robot.data.default_root_state[0, 2])
+    if height.min() < 0.9 * home_height:
         raise AssertionError(
-            "Short neutral-hold root dropped below the 0.15 m baseline guard."
+            "Short neutral-hold root dropped below the HOME-relative guard: "
+            f"{float(height.min()):.6f} m vs HOME {home_height:.6f} m."
         )
     print(
         f"Whole robot scene passed: device={args.device}, envs={args.num_envs}, "

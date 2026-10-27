@@ -106,19 +106,40 @@ M2 的短跑只验证训练链路；策略性能通过后续评估和实验确�
 
 ## 当前任务
 
-当前无进行中任务；T037 已按官方项目在 XML 中补 `imu` site 与 5 个内置传感器，统一检查与 GPU 场景检查通过。
+当前无进行中任务；T022–T026 已把任务契约、平地速度环境、本地网络/Storage、PPO 与
+Runner/`duck-train` 依次接通，结论与实测见下方各条目。T038 已把 `HOME_FRAME` 定为
+脚底水平的蹲姿并通过验收，未改动默认增益。T043 已把 PPO 与网络设计源码放到项目根
+`rsl_rl/`（只读参考）。T042 只读核对了三处模型的碰撞体简化，未改变任何模型文件。
+T044 修掉了自碰撞传感器把足底-地面接触计入 `self_collisions` 的问题；在此之前该奖励项
+每步 `-0.109`，一个人盖过全部正奖励（约 `+0.054`），修复后奖励才反映任务本身。
+T045 修掉了 `ht_microduck_constants.py` 独立预览的两个缺陷：预览跑的是 XML 默认的显式
+Euler，无刷阻尼在该积分器下发散，机器人才"倒地后一直抽"；且 `init_state` 从未生效。
+现在预览与训练用同一 `MujocoCfg`，并从 HOME 关键帧起算；入口也改成
+`legged_wbc_mjlab` 的 `Entity` 直连写法，不再依赖 `Scene` 与 GPU。
+随后用户报告"会抖动"，定位为 12 个无刷关节 `dof_armature` 全为 0、关节几乎没有惯性，
+PD 阻尼按 6 Hz 空转；补上 armature 后站姿 `|qvel|` 降 29 倍、可见抖动降 24 倍、
+训练环境零动作抖动降 30 倍，且零动作奖励不变差。取值由用户提供为
+`0.0069753532276 kg·m²`（关节侧）；此前只能用官方 duck MJCF 的统一占位值 `0.002`，
+因为官网、官方手册、官方 STEP 模型与参考项目均无 HTDW-3532 转子惯量。
+按 32:1 折算该真实值相当于 68.1 g·cm² 转子，与该尺寸电机量级吻合。
+T041 对照三个参考项目复核了下一步，结论见下方条目。
+T040 已整理根目录 README 的概览、运行入口和文档导航。
+T037 已按官方项目在 XML 中补 `imu` site 与 5 个内置传感器，统一检查与 GPU 场景检查通过。
 T039 按用户意见让本体 XML 只保留机器人内容，并把 `ht_microduck_constants.py` 按官方
 `microduck_constants.py` 的结构重写；地形与照明由 mjlab 的 `Scene` 提供，执行器沿用本地实现。
-T035 的 3532 NT-PD、T036 的下一步规划结论见各自条目。
-下一项仍为 T001 整理Git基线，随后推进 T038（HOME站姿标定），再进入 T022。
-T002 的实体/场景功能已有 T016 证据，待 T001 完成后复核其前置条件和关闭任务。
+T001、T002 已按本轮核对证据关闭（见各自条目），原先"下一项仍是 Git 基线"的前提不再成立。
+下一项为 T027（恢复、回放与定量评估）。T022–T026 的短跑只证明训练链路通、loss/梯度有限、
+checkpoint 可读写可恢复，**不证明学会行走**；2026-10-27 复核在 CPU 上跑到 100 迭代，
+episode 长度 24 → 156 步、return 由负转正，但仍在 3 s 左右跌倒。GPU 设备节点已在当日晚间
+恢复可见，`duck-train` 可在 `cuda:0` 上实际运行；2048 环境需用 `--nconmax 64 --njmax 256`
+规避 Warp 图捕获的 OOM（实测接触峰值 13、约束峰值 55），详见 T026 追加条目。
 M0/M1 阶段验收仍按依赖推进，初始化姿态和短跑结果不代表稳定站立。
 
 | 编号 | 任务 | 状态 | 前置条件 |
 |---|---|---|---|
 | T000 | 建立开发规则和统一检查入口 | 完成 | 无 |
-| T001 | 整理现有开发基线 | 待办 | T000 |
-| T002 | 接入 mjlab 机器人实体与最小场景 | 待办 | T001 |
+| T001 | 整理现有开发基线 | 完成 | T000 |
+| T002 | 接入 mjlab 机器人实体与最小场景 | 完成 | T001 |
 | T003 | 补充并发与测试文件管理规则 | 完成 | T000 |
 | T004 | 评审 robots 模块缺项 | 完成 | T000；不依赖 T001 提交，仅只读评审代码 |
 | T005 | 核实并简化 MJCF 资源加载 | 完成 | T004；用户提出的模型加载修正 |
@@ -138,12 +159,12 @@ M0/M1 阶段验收仍按依赖推进，初始化姿态和短跑结果不代表�
 | T019 | 整理机器人常量模块的代码风格 | 完成 | T018；用户指定参考文件，保持行为不变 |
 | T020 | 对照 Microduck 官方简化机器人参数配置 | 完成 | T019；用户要求重新核对参数与参考风格 |
 | T021 | 对照 Microduck 梳理训练与实机部署缺项 | 完成 | T020；用户指定官方仓库，只读调研不依赖 T001 提交 |
-| T022 | 固定首版任务控制与观测契约 | 待办 | T001、T002、T021 |
-| T023 | 实现最小平地速度任务 | 待办 | T022 |
-| T024 | 实现本地网络与轨迹 Storage | 待办 | T023 |
-| T025 | 实现本地 PPO 更新 | 待办 | T024 |
-| T026 | 接通 Runner、训练入口与短跑基线 | 待办 | T023、T025 |
-| T027 | 实现恢复、回放与定量评估 | 待办 | T026 |
+| T022 | 固定首版任务控制与观测契约 | 完成 | T001、T002、T021 |
+| T023 | 实现最小平地速度任务 | 完成 | T022；参考 pollen-robotics/microduck_rl 官方平地任务 |
+| T024 | 实现本地网络与轨迹 Storage | 完成 | T023 |
+| T025 | 实现本地 PPO 更新 | 完成 | T024 |
+| T026 | 接通 Runner、训练入口与短跑基线 | 完成 | T023、T025 |
+| T027 | 实现恢复、回放与定量评估 | 进行中 | T026 |
 | T028 | 导出策略包并通过 CPU MuJoCo 回放 | 待办 | T027 |
 | T029 | 接入混合硬件 I/O、IMU 与故障处理 | 待办 | T022；需确认本机协议、IMU 与控制板，策略可先用替身 |
 | T030 | 标定实机参数并验证域随机化 | 待办 | T029；需本机台架与测量数据 |
@@ -154,8 +175,14 @@ M0/M1 阶段验收仍按依赖推进，初始化姿态和短跑结果不代表�
 | T035 | 实现并接入 3532 NT-PD 执行器 | 完成 | T034；用户明确要求实施，独立于 T001 的 Git 提交 |
 | T036 | 对照三个参考项目确定下一步 | 完成 | T035；用户指定 microduck、microduck_rl 与 duck_project，只读调研与只读实测 |
 | T037 | 在 XML 中声明 IMU 参考点与内置传感器 | 完成 | T036；用户明确要求按官方项目补 IMU 数据 |
-| T038 | 标定 HOME 站姿 | 待办 | T001、T002、T037；站姿取向需用户确认 |
+| T038 | 标定 HOME 站姿 | 完成 | T001、T002、T037；用户给出 `hip_roll 0.38`/`hip_pitch 1.57` 并要求重心居中、不前后倾 |
 | T039 | 按官方结构重写机器人常量模块 | 完成 | T037；用户指出本体 XML 不应携带地形、常量应照官方写法 |
+| T040 | 精简 README 并整理项目入口 | 完成 | T039；用户要求优化 README，独立于 T001 的 Git 提交 |
+| T041 | 对照三个参考项目复核下一步 | 完成 | T040；用户指定 microduck、microduck_rl 与 duck_project，只读调研与项目内探针 |
+| T042 | 核对三处模型的碰撞体简化 | 完成 | T041；用户要求比较本机、官方 microduck 与 duck_project 的碰撞体 |
+| T043 | 拉取 PPO 与网络设计源码参考 | 完成 | T042；用户只要 PPO/网络设计，不要整个训练框架 |
+| T044 | 修复自碰撞传感器误计地面接触 | 完成 | T023；用户报告"脚与地面的接触也算成自碰撞" |
+| T045 | 修复独立预览的积分器与初态 | 完成 | T018；用户报告直接运行常量模块会倒地后一直抽、且看不到 `init_state` |
 
 ### T001 整理现有开发基线
 
@@ -179,6 +206,15 @@ T021 复核补充：当前仅 README 被 Git 跟踪，已有代码、文档、�
 T032 后续更新：忽略规则与统一检查入口已纳入本次工作流完善；具体结果见 T032 完成记录。
 Git 基线的资源审阅与提交仍由本任务负责，不能仅因工作流和检查就绪关闭 T001。
 
+T041 复核结论（完成）：Git 基线已经具备。提交 `21589d7`（2026-10-27 14:30，作者 KKMJJ0721）
+以 60 个文件、11260 行新增把 `.gitignore`、`AGENTS.md`、`Makefile`、`README.md`、
+`docs/`、`pyproject.toml`、`uv.lock`、`src/`、`tests/`、`tools/` 及 16 个 STL 一并纳入跟踪；
+`git ls-files --others --exclude-standard` 为 0，工作区只有 T040/T041 的文档改动。
+`.gitignore` 排除 `/.venv/`、`__pycache__/`、`/.artifacts/`、`/outputs/`、`/runs/` 等，
+未跟踪任何环境、缓存或训练产物，也没有全局忽略 `*.pt`/`*.onnx`/`*.json`。
+constants 的 Ruff `I001` 已在 T032 修复，本轮 `make check` 全程通过。
+因此 T001 的四条验收条件均满足，状态改为完成；本任务未新增 Git 写操作。
+
 ### T002 接入 mjlab 机器人实体与最小场景
 
 目标：复用现有 MJCF 加载器，将机器人放进由 mjlab 管理的最小场景。
@@ -198,6 +234,15 @@ Git 基线的资源审阅与提交仍由本任务负责，不能仅因工作流�
 
 M1 后续先拆分混合执行器任务，明确动作顺序、控制周期、增益、限幅和参数来源，再进入 M2。
 M2 开始前将任务环境、网络与 Storage、PPO 更新、Runner 与入口分别拆成可验收任务。
+
+T041 复核结论（完成）：T001 已关闭，本任务的前置条件满足，四条验收条件均有本轮证据。
+本轮实际执行的整机场景检查为 `cuda:0`、4 环境、150 步、`dt=0.002 s`，退出码 0，
+末根高 `0.166165–0.166172 m`、峰值力矩 `0.138278 N·m`、峰值关节速度 `0.184298 rad/s`；
+双脚全程接地、`planes=1`（仅 mjlab terrain）、IMU 传感器 5 个、局部 reset 与目标映射通过。
+地面与灯光的归属由 T039 的模型拆分固定：本体 XML 无 floor/light，场景提供 terrain 与太阳。
+`make check` 通过（锁文件、Ruff、134 项测试与 8 项子测试、模型、Git 差异空白），
+被动模型仍为 `nq=22`、`nv=21`、`nu=0`、15 关节、16 网格、质量 `3.2947 kg`。
+状态改为完成；执行器标定与稳定站立仍分别属于 T030、T031，不在本任务范围。
 
 ### T003 补充并发与测试文件管理规则
 
@@ -890,9 +935,9 @@ XML 的总力矩限幅保留，CPU 检查验证默认值与编译后的双向限
 |---|---|---|
 | T022 | 首版控制/观测配置及 `tools/check_task_contract.py` | `uv run --no-sync python -B tools/check_task_contract.py --device cuda:0`；逐关节脉冲验证映射，4 环境按任务周期运行数秒，检查非策略关节保持、限幅、历史与局部 reset；冻结单位、时序、偏置/缩放和处理顺序 |
 | T023 | `tasks/` 中的平地速度环境及 `tools/check_velocity_env.py` | `uv run --no-sync python -B tools/check_velocity_env.py --device cuda:0`；4–16 环境反复 reset/step，验证观测/动作/奖励有限值及形状、跌倒/超时区分；actor 只用实机可得量，真值线速度/接触可供 critic 或奖励使用 |
-| T024 | 本地 actor/critic、观测统计、Storage 和 GAE | `uv run --no-sync python -B -m pytest -q tests/test_networks.py tests/test_storage.py`；用可手算轨迹检查 return/advantage、真实终止与 timeout bootstrap，验证 log-prob/value 形状和批次覆盖 |
+| T024 | 本地 actor/critic、观测统计、Storage 和 GAE | `uv run --no-sync python -B -m pytest -q tests/test_networks.py`（Storage 与 GAE 测试同文件）；用可手算轨迹检查 return/advantage、真实终止与 timeout bootstrap，验证 log-prob/value 形状和批次覆盖 |
 | T025 | 本地 PPO 损失与更新模块 | `uv run --no-sync python -B -m pytest -q tests/test_ppo.py`；验证 clipping、熵、value loss、梯度裁剪与更新前后参数变化，有限梯度和 log-prob 一致性 |
-| T026 | Runner、`duck-train`、配置/种子/指标记录和 checkpoint | `uv run --no-sync duck-train --num-envs 16 --iterations 5 --seed 0`；GPU 完成采样及数次 PPO 更新，loss/梯度有限、检查点可读；记录零动作/初始策略基线，不以短跑宣称学会行走 |
+| T026 | Runner、`duck-train`、配置/种子/指标记录和 checkpoint | `uv run --no-sync duck-train --num-envs 16 --iterations 5 --seed 0`；完成采样及数次 PPO 更新，loss/梯度有限、检查点可读且可恢复；记录零动作/初始策略基线，不以短跑宣称学会行走 |
 | T027 | 恢复入口、`duck-play`、`duck-eval` 和评估报告 | 用同一 checkpoint 实际执行恢复训练、回放及固定种子评估；恢复网络、优化器、统计与迭代号，区分重启环境与精确轨迹续接；覆盖零速、前后、侧移、转向，报告跟踪误差、跌倒率、episode 长度与限幅统计；开工时冻结部署前的仿真性能门槛，未达标时先记录并按授权训练/调参，不能进入 T031 |
 | T028 | `duck-export`、策略元数据、ONNX 一致性工具和 CPU 回放工具 | 实际执行 `duck-export`、`tools/check_onnx.py`、`tools/play_onnx.py`；同一观测集比较 PyTorch/ORT 并冻结误差容限，在 CPU MuJoCo 用同样的执行器、时序、观测、缩放/滤波闭环运行，避免换成理想 PD；确认 CPU 对 BAM 的适配 |
 | T029 | 混合硬件后端、IMU 转换、状态机、FakeIo 和带时间戳日志 | `uv run --no-sync python -B -m pytest -q tests/test_runtime.py` 加目标板只读/单关节低幅度检查；验证零位、符号、单位、两类链路时序、IMU 坐标；注入断流、旧样本、NaN、推理失败和超期，检查启停、渐变与故障行为 |
@@ -1166,23 +1211,102 @@ duck_project 归档中另有一处文档与数据冲突：`reports/README.md` �
 
 ### T038 标定 HOME 站姿
 
-状态：待办。依赖 T001（基线）、T002（实体复核）与 T036 的几何结论。
+状态：完成。用户给出 `r_hip_roll=0.38`、`r_hip_pitch=1.57` 的大致取向，要求左腿镜像、
+重心居中且不前后倾，并授权自行补齐其余关节。
 
 目标：给出一个可复核、脚底平贴、支撑余量足够的 HOME 站姿。
 
-范围：`ht_microduck_constants.py` 的 `HOME_FRAME`，以及 `tools/check_robot_scene.py`、
+范围：`ht_microduck_constants.py` 的 `HOME_FRAME`（含初态根高），以及 `tools/check_robot_scene.py`、
 `tests/test_robot_entity.py` 的对应断言；README 同步。
 
-待用户确认：站姿取向由用户决定。T036 已量化两个候选（全零 vs `hip_roll` 内收 `0.0873 rad`），
-另有 duck_project 的"深蹲 + 踝补"思路，但它绑定旧机腿长，需要在本机重新扫描。
+结果：
 
-验收条件：
+用户给的两个角度都不能直接落地，实测依据如下（`.artifacts/t042-stance`，RTX 4060）。
 
-- 站姿：给出 `hip_roll`/`hip_pitch`/`knee`/`ankle` 的目标值与依据；报告脚底平面倾角、
-  单脚与双脚接触面积、重心到支撑边界的距离、双脚最低点离地高度和根高，并用数值断言固化。
-- `make check` 通过，整机场景 GPU 检查 150 步通过且仍报告双足接地、无溢出与有限值。
-- 记录改动前后 HOME 的保持与速度脉冲对比（`0.10/0.20/0.35 m/s`），作为 M1 的量化证据。
-- 不宣称完成标定：增益、限幅、延迟与供电仍是仿真假设，实机参数归 T030。
+1. `hip_pitch=1.57` 正好是关节限位（`range="-1.571 1.571"`），且会把腿折到脚过髋：
+   `roll 0.38 / pitch 1.57 / calf 0 / ankle 0` 的脚底法线倾角 **88.15°**，
+   补 `calf=−1.57` 后仍有 16.90°；两者在 5–6 s 零动作保持中都是 **48/48 全倒**
+   （根高掉到 0.043 m，倾角 74–76°）。所以 pitch 必须降到 0.85。
+2. `hip_roll=0.38` 只在 (−0.384, 0.384) 内留 0.004 rad 余量，且把脚底翘起约 16.9°，
+   只靠内缘着地；同时横向支撑余量从 92 mm 收到 57 mm。平地姿态需要的镜像内收是
+   **`+0.0873 / −0.0873`**（T041 结论），脚底倾角 `0.13°`，与全零姿态的 `4.87°` 相比才是真正水平。
+
+最终 HOME（`HOME_JOINT_POS`）：
+
+| 关节 | 右 | 左 |
+| --- | --- | --- |
+| `hip_roll` | `+0.0873` | `−0.0873`（镜像） |
+| `hip_pitch` | `0.85` | `0.85`（同号） |
+| `calf` | `−1.20` | `−1.20`（同号） |
+| `ankle` | `0.35` | `0.35`（同号） |
+
+`hip_yaw`/`neck_pitch`/`head_pitch`/`head_yaw`/`head_roll`/`mouth` 保持 0。
+根高 `0.1534 m`。支撑面比最低顶点低约 0.5 mm，最低顶点（脚跟圆弧）离地 `0.4 mm`，
+复位时 `ncon=0`。
+
+依据（CPU 几何 + GPU 保持，各自独立测得）：
+
+- 脚底平面倾角 `0.13°`（两侧相同），全零姿态是 `4.87°`。
+- 重心到支撑边界：前 `40.0 mm`、后 `34.3 mm`、左 `92.5 mm`、右 `91.9 mm`；
+  前后差 `5.7 mm`，即重心在脚掌前后基本居中，不向前也不向后倾。
+- 静态保持力矩最大 `0.176 N*m`（`hip_roll`），远低于 `2 N*m` 上限。
+- 5 s 零动作保持：**0/128 跌倒**（8 种子 × 16 环境，关节目标加 `0.01 rad` 噪声），
+  根高稳定在 `0.150 m`，末端倾角 7.8–9.4°。
+
+根高比姿势本身更敏感，这是本轮最重要的实测结论：
+
+| 根高 | 最低顶点离地 | 零动作保持 |
+| --- | --- | --- |
+| `0.1530` | `0.00 mm` | 0/64（与地面接触） |
+| `0.1534` | `0.40 mm` | **0/128** |
+| `0.1540` | `1.00 mm` | 1/128 |
+| `0.1545`/`0.1548` | `1.5`/`1.8 mm` | 0/128 |
+| `0.1550` | `2.00 mm` | 1/96 |
+| `0.1586` | `4.80 mm` | 2/64（旧零位的 3.84 mm 支撑面余隙） |
+
+原因是任何可见离地间隙都让复位变成落体，落地冲击会把蹲姿撞散。因此不沿用旧零位
+3.84 mm 的支撑面余隙，取 `0.1534 m`。这一条对后续所有复位/课程设计都成立。
+
+早期版本的保持测试把所有候选都从 `root_z=0.171` 放下，让深蹲姿势从 3–8 cm 高空自由落体，
+把落地冲击记成了姿势不稳；改成每个姿势按自身几何高度复位后结论才稳定。
+平面拟合也不能用来判脚底倾角：脚部碰撞网格是整只脚（约 3.9e4 顶点）且带曲面，
+在倾斜姿态下拟合会给出 33–90° 的假值；改为在真正水平的姿态标定一次脚底法线，
+再用踝链旋转它。
+
+守卫与断言同步：
+
+- `tools/check_robot_scene.py` 的根高守卫原为绝对值 `0.15 m`，对更低的蹲姿等于失效且会误报；
+  改为相对 HOME 的 `0.9 × HOME`（`0.138 m`），实测 `0.1498 m` 通过，腿塌时仍能拦住。
+- `tests/test_robot_entity.py` 的三处 HOME 断言与脚底余隙区间（改为 `−1.5 mm ~ 0`）同步；
+  “下压 5 mm 触地”改为 `8 mm`，因为最低网格点是脚跟圆弧而不是支撑面。
+
+验收：
+
+- `make check` 通过：`All checks passed!`、`134 passed, 1 warning, 8 subtests passed`。
+- 整机场景 GPU 检查 150 步通过：`root_height=[0.149827, 0.149834] m`、
+  `peak_effort=0.532 Nm`、`peak_joint_speed=0.841 rad/s`、双足接地、无溢出。
+- 速度脉冲（协调的前倾+屈膝开环目标，1 s 保持）：
+
+  | 幅度 | 旧零位 | 新 HOME |
+  | --- | --- | --- |
+  | `0.10 rad` | 0/24 | 0/24 |
+  | `0.14 rad` | 0/24 | 0/24 |
+  | `0.18 rad` | 0/24 | 0/24 |
+  | `0.22 rad` | 0/24 | 0/24 |
+  | `0.26 rad` | 2/24 | **0/24** |
+
+  只前倾不动膝的非协调脉冲会让蹲姿在 0.35 m/s 档 23/24 跌倒，但那是不可执行的指令
+  （膝关节不动时髋前倾等于把脚往后蹬），不作为站姿证据；执行器层面的跟踪能力归 T023。
+
+未完成、需如实记录的部分：
+
+- 默认增益未改，仍是 `kp=10`/`kd=0.4`。本轮只证明该增益下蹲姿可以 0/128 保持，
+  没有证明它是最优增益；T041 曾测出 `kp=20`/`kd=0.8` 能把旧零位从 7/96 降到 2/96。
+  增益与 HOME 的联合整定仍未做，属 T023 及 M1 的范围。
+- 单脚/双脚接触面积没有直接测量。mjlab 1.6 的 `sim.data.contact` 是 `WarpBridge`，
+  只有 `dist`/`pos`/`frame` 等扁平张量，没有 `geom1`/`geom2`，无法在设备侧按 geom 归并接触点；
+  本轮改用 CPU 顶点与支撑面几何替代，并明确它不等于接触面积。
+- 增益、限幅、延迟与供电仍是仿真假设；实机参数归 T030。不宣称完成实机标定。
 
 ### T039 按官方结构重写机器人常量模块
 
@@ -1225,6 +1349,756 @@ duck_project 归档中另有一处文档与数据冲突：`reports/README.md` �
 - `imu` site 仍在本体原点、单位姿态。官方 site 挂在 `trunk_base` 上但带 `(-0.021, 0.0001, -0.0147) m`
   偏移；本机该偏移未测量，属 T030 硬件标定。
 - 站姿标定（T038）未做。
+
+### T040 精简 README 并整理项目入口
+
+状态：完成。依赖 T039，按用户要求进行文档整理，不改变实现和阶段验收状态。
+
+目标：让首次阅读者快速了解项目用途、已有功能、检查入口和详细文档位置。
+
+范围：根目录 `README.md` 和本页任务记录。安装流程引用 `setup.md`，
+执行器公式、参数来源及接入细节引用已有模块说明与设计，任务进度仍在本页维护。
+
+验收条件：
+
+- README 中的目录、符号、命令与当前代码和 Makefile 一致，本地链接可解析。
+- 保留 12+3 电机分组、机器人与场景的边界、仿真假设与实机标定的区别，以及训练入口尚未实现的说明。
+- 直接运行的 GPU 检查示例先创建项目内临时目录，并隔离相关缓存。
+- `make check` 通过；不新增测试，不因文档整理启动 GPU 短跑或训练。
+
+### T041 对照三个参考项目复核下一步
+
+状态：完成。依赖 T040；用户指定 pollen-robotics/microduck、pollen-robotics/microduck_rl 与
+`/home/sunteng/projects/duck_project`，要求判断下一步做什么。
+
+目标：把"已经有模型、混合执行器和场景检查，但还没有任务环境与训练链路"这一现状，
+对照三个参考项目落到一个可执行的任务顺序上，并纠正上一轮遗留的错误前提。
+
+范围：只读核对上游固定提交、`duck_project` 归档与本仓库代码；在项目内
+`.artifacts/t040-next-step/` 写一次性探针做可行性实测。不修改机器人源码、参数、XML、
+依赖或测试，不执行训练与实机操作。探针在交付前删除，结论与数值落回本页。
+
+核对版本（2026 年 10 月 27 日，均用 GitHub API 核对默认分支）：
+
+- [microduck@96b89d8](https://github.com/pollen-robotics/microduck/tree/96b89d8613f06722c1d64ce75ab0d7124fed9d8f)，
+  默认分支 `main`，2026-10-26 "Prepare release 0.17.9"。
+- [microduck_rl@b02fdea](https://github.com/pollen-robotics/microduck_rl/tree/b02fdea4902c2b93b7d34a83a6f05da4ececb7d3)，
+  默认分支 `develop`，2026-10-12；与 T036 记录的提交一致，`develop` 本身未再前进。
+  仓库 `pushed_at` 更新是因为其它分支在动，引用时仍须写明 `develop`。
+- `/home/sunteng/projects/duck_project`：78 个 run 的归档，无 `.git`、无权重。
+
+**上游事实（附固定链接）**
+
+- 训练侧主任务是平地速度跟踪 `Mjlab-Velocity-Flat/Rough-MicroDuck`；另有 `StandUp`、
+  `VelStand`、`SitStand`、`RollerStandUp` 等站立/起身任务，注册表见
+  [tasks/\_\_init\_\_.py](https://github.com/pollen-robotics/microduck_rl/blob/b02fdea4902c2b93b7d34a83a6f05da4ececb7d3/src/mjlab_microduck/tasks/__init__.py)。
+- 观测固定 61 维：`base_ang_vel`(3)、`projected_gravity`(3)、`joint_pos`(14)、`joint_vel`(14)、
+  `last_action`(14)、命令块 13（twist 3 + head_pose 4 + body_pose 6）。actor **删除**
+  `base_lin_vel` 与 `height_scan`，只给 critic；即刻意只用实机可得量。
+- 动作 `JointPositionActionCfg`、`scale=1.0`、14 维（15 关节去掉嘴）；控制 50 Hz
+  （`timestep=0.005`、`decimation=4`）；`episode_length_s=20`。
+- 命令固定 `lin_vel_x ±0.4`、`lin_vel_y ±0.3`、`ang_vel_z ±1.0`，不再做扩张课程；
+  15% 环境专训原地转；站立环境占比 0.02→0.25 走课程。
+- 奖励骨架：`track_linear_velocity +2.0`、`track_angular_velocity +2.0`、`upright +2.0`、
+  `pose +1.0`、`air_time +3.0`、`head_pose_tracking +2.0`、`self_collisions −1.0`、
+  `action_rate_l2 −0.1→−1.0`（课程）、`foot_slip −0.1`（刻意弱）、`body_ang_vel −0.05`、
+  `angular_momentum −0.02`。
+- 上游 `AGENTS.md` 给出可迁移的工程经验：每个罚项在 wandb 中必须 ≤ 0（符号写反会变成奖励）、
+  不要用二值 mask 门控奖励、命令槽即使权重为 0 也要保留小范围采样、零命令必须显式训练、
+  课程阶段要与策略实际进度对齐、`warm start ≠ resume`（步数计数器会被恢复）。
+- 部署侧 [control.rs](https://github.com/pollen-robotics/microduck/blob/96b89d8613f06722c1d64ce75ab0d7124fed9d8f/robotd/src/control.rs)
+  的目标为 `HOME + scale × action`；[safety.rs](https://github.com/pollen-robotics/microduck/blob/96b89d8613f06722c1d64ce75ab0d7124fed9d8f/duck-control/src/safety.rs)
+  对 NaN 是**拒绝**而非夹取，deadman 500 ms 只清速度，跌倒判定只上报。
+- 上游存在一处自相矛盾：训练侧 `AGENTS.md` 写策略训练中不加动作低通，
+  部署侧 `control.rs` 写滤波系数"训练时就是 0.5/0.7"。二者不能同时成立，不能作为本机依据。
+
+**duck_project 事实（以 JSON 为准，不引用概述性百分比）**
+
+- 48 集行走评估（seed 2043）：v21 37/48、v29 25/48、v37 36/48、v38b 0/48、v43 0/48、v44 0/48。
+- v44 的 0/48 全部由 `velocity` 判死（48/48，其中 `|vy|≥0.04` 有 45 集），
+  且该 run 的 `selection.json` 选中的权重是 v29 的 checkpoint——0/48 指新训 final，
+  0.625 是回退基线，两者不能混用。
+- 文档里的"前扫 15.3 mm / 抬脚 17.0 mm"在 `params/`、`reports/` 中没有任何原始 JSON 支撑，
+  仅出现在 md 与脚本内硬编码表；`sitstand` 的"96%"是把分子 96/192 误当百分比，
+  `sitstand_v46.md` 自述为 50%。
+- 归档代码里 `gait.py` 的 excursion 仍用机体系，正是 v43 认定为致命 bug 的算法；
+  评估口径应以 v43 之后的世界系版本为准。
+
+**本机实测（一次性探针，非验收）**
+
+探针位于 `.artifacts/t040-next-step/`，全部使用项目内 `TMPDIR`/Warp/Torch 缓存、
+`PYTHONDONTWRITEBYTECODE=1`，RTX 4060、`cuda:0`。
+
+1. **mjlab 1.6 自带的平地速度任务可以直接套在本机器人上**，但必须显式改六处，
+   否则第一次 `reset` 就报错。实测的失败顺序与修法：
+   - `feet_ground_contact`、`self_collision` 两个接触传感器在通用模板里不存在，
+     需按本机 `r_foot_collision`/`l_foot_collision` 与 `base_link` 子树自行声明，
+     否则 `KeyError: Scene element 'feet_ground_contact' not found`。
+   - `pose` 奖励的 `std_standing/walking/running` 默认是空字典，必须给正则映射，
+     否则 `tensor a (15) must match tensor b (0)`。
+   - `terrain_scan` 与 `height_scan` 在平地上应删除；`foot_height_scan` 改为
+     `r_foot`/`l_foot` 两个 site。
+   - `actions["joint_pos"].actuator_names` 需显式给 10 个腿部关节，才能得到 10 维动作
+     并让其余 5 个关节保持默认位置。
+   - `htdw3532_init`、`bam_init` 两个 startup 事件必须注册，
+     否则 `HTDW3532 needs independent per-world native PD fields`。
+   - `foot_friction`、`base_com`、`upright`、`body_ang_vel`、`foot_clearance`、`foot_slip`
+     的 asset 选择器默认是空元组，需按本机命名填写。
+
+   按上述改动后，2 环境 `obs[actor]=(2,52)`、`obs[critic]=(2,64)`、动作 `(2,10)`，
+   20 步零动作奖励有限，根高 `0.1658–0.1664 m`，未触发跌倒终止。
+   52 维的构成是 3+3+15+15+10+3（角速度、投影重力、全部 15 关节位置与速度、上一步动作、命令）；
+   joint_pos/joint_vel 含被保持的 5 个关节，因此比动作维度大。
+2. **吞吐**：同配置下 256 环境约 `1.47e4` env-step/s、1024 环境约 `1.29e4`、
+   4096 环境约 `4.20e4`（60 步均值，含少量首次编译摊薄）。
+   RTX 4060 8 GB 在 4096 环境时显存占用未见压力。这说明以 256–1024 环境先跑
+   短训练是可行的，训练规模不是当前瓶颈。
+3. **HOME 站姿比 T036 记录的更脆弱**。固定初态、移除 `push_robot`、50 Hz 控制、
+   32 环境 × 3 种子、5 s 零动作保持：
+
+   | 站姿 | 增益 | 跌倒 | 末根高 |
+   |---|---|---|---|
+   | 全零 | `kp=10`/`kd=0.4` | 7/96 | `0.1570–0.1710 m` |
+   | 全零 | `kp=20`/`kd=0.8` | 2/96 | `0.1655–0.1669 m` |
+   | 水平（±0.0873） | `kp=10`/`kd=0.4` | 5/96 | `0.1606–0.1686 m` |
+   | 水平（±0.0873） | `kp=20`/`kd=0.8` | 1/96 | `0.1666–0.1688 m` |
+
+   把根高下调到 `0.1695 m` 没有改善（4/96 与 1/96）。
+4. **跌倒来源已定位到 `push_robot` 而不是 DR 组合**：同一保持测试保留全部默认 DR
+   但去掉 `push_robot` 后，全零站姿 `worst_tilt` 从 70.30° 降到 19.25°、跌倒 0/8；
+   水平站姿从 68.34° 降到 10.74°、跌倒 0/8。单独去掉 `base_com`、`encoder_bias`
+   或 `foot_friction` 都不能消除跌倒。上游默认推扰为每 1–3 s、±0.5 m/s，
+   对 3.3 kg 的本机明显过强。
+5. **脚底平面只能用镜像内收拉平**：CPU 顶点拟合给出全零时两侧均为 `4.55°`、
+   `+0.0873/−0.0873` 时两侧均为 `0.11°`；同号 `+0.0873/+0.0873` 则一侧 `0.11°`、
+   另一侧 `7.65°`。这与 T036 的措辞一致，但 T036 没写出符号，落地时容易写错。
+6. **控制周期与物理步长不能独立选**：`dt=0.005`、decimation 4（50 Hz）在默认 DR 下
+   跌倒 3–4/4；`dt=0.002`、decimation 10（50 Hz）在同条件下 0–1/4。
+   即上游"50 Hz"这个结论在本机成立的前提是物理步长为 2 ms，不能把 `dt=0.005` 直接搬来。
+
+**为什么顺序是 T038 → T022 → T023，而不是直接写环境**
+
+- 任务契约（动作子集、`scale`、观测项、控制周期）一旦冻结，观测维度与默认关节角就固定了。
+  `duck_project` 的教训是：改 `default_joint_pos` 等于整体平移 `joint_pos_rel`，
+  是"换任务"，会让热启动失配；`action scale` 被全局值覆盖曾直接导致坐下 100% 摔倒。
+  所以必须先把 HOME 与增益定下来，再冻结契约。
+- HOME 现在连"零动作保持"都做不到全种子无跌倒，而这个姿态会被写进观测基线
+  （`joint_pos` 相对 HOME）、奖励（`pose`）与部署侧的 `DEFAULT_POSITION`。
+  在它稳定之前写任务，等于把一个已知不稳的参考点固化进三层接口。
+- 反过来，T022 不需要训练链路，也不该等 T029 的硬件协议，因此它可以紧跟 T038。
+
+**下一步（按依赖排序）**
+
+1. **T038**：按本页新增的验收条件确定 `hip_roll` 符号、`hip_pitch`/`knee`/`ankle`
+   的站姿值与默认增益，并把"多种子零动作保持"写入断言。这是唯一阻塞 T022 的事项。
+2. **T022**：冻结契约。建议首版取 10 维双腿动作（颈头 5 关节显式保持）、
+   `scale` 按本机单独定（不沿用上游 1.0 也不再沿用全局 0.5）、
+   `dt=0.002 s` + decimation 10（50 Hz，见实测第 6 条）、观测只用
+   `imu_ang_vel`/`imu_upvector`/关节位置/关节速度/上一步动作/命令，
+   不用 `imu_lin_vel` 与 `root_angmom`。
+3. **T023**：在 `tasks/` 实现平地速度任务。可直接以 mjlab 1.6 的
+   `make_velocity_env_cfg()` 为底，按上面第 1 条列的六处改动落地；
+   推扰强度必须按本机质量重标（实测第 4 条），不能沿用上游 ±0.5 m/s。
+4. **T024–T026**：本地网络、Storage、PPO、Runner 按既定方向实现，不引入 RSL-RL。
+   上游 `AGENTS.md` 的奖励符号检查、零命令显式训练、课程阶段对齐三条应直接写进验收。
+5. **T027–T028**：评估与导出。评估口径参考 `duck_project` 的世界系前扫与真实足端高度，
+   但不要复用其机体系 excursion 与 `contact.found` 判离地。
+6. **T029–T031** 仍等待本机协议、IMU 安装与控制板信息，本轮不调整其依赖。
+
+**结论一句话**：三个参考项目里，`microduck_rl` 提供可直接套用的任务骨架与工程不变量，
+`duck_project` 提供"哪些指标能信、哪些坑会重演"的负面清单，`microduck` 提供部署侧契约；
+本仓库现在已经具备把它们接起来的前提，最该做的是先把 HOME/增益定死（T038），
+再用 mjlab 1.6 通用速度模板改出本机任务（T022 → T023），而不是继续攒检查工具。
+
+**本轮实际推进（2026-10-27）**：T038 → T022 → T023 → T024 → T025 → T026 已依次完成，
+上面的"下一步"清单第 1–4 条已落地，详见下方各任务的完成记录。T027 起仍按原依赖等待。
+
+### T022 固定首版任务控制与观测契约
+
+状态：完成。依赖 T001、T002、T021；承接 T038 定下的 HOME 与增益。
+
+目标：把"动作子集、缩放、观测项与顺序、控制频率、episode 长度"冻结成一份运行时校验的
+契约，让任务环境、PPO、回放与导出都从同一处取维度，避免 T041 记录的
+"改 `default_joint_pos` 或全局 `action_scale` 直接换掉任务"。
+
+产物：`src/ht_microduck/tasks/common/contract.py` 与 `tools/check_task_contract.py`。
+
+契约取值与依据：
+
+| 项 | 取值 | 依据 |
+|---|---|---|
+| 物理步长 | `0.002 s` | T041 实测第 6 条：`dt=0.005` 在默认 DR 下 3–4/4 跌倒 |
+| decimation | `10` | 与上一条共同给出 50 Hz，且 3532 有 0–3 步指令延迟 |
+| 控制频率 | `50 Hz` | 与 `microduck_rl` 一致 |
+| episode 长度 | `20.0 s` | 与 `microduck_rl` 一致 |
+| 动作维度 | `10`（仅双腿） | 颈头 5 关节由 HOME 显式保持，见下 |
+| 动作顺序 | `r_hip_yaw/roll/pitch/calf/ankle` → `l_…` | 与 `joint_pos` 观测同一顺序 |
+| 动作缩放 | `0.25 rad` | 本机单独定；不沿用上游 `1.0` 或 mjlab 全局 `0.5` |
+| actor 观测 | `39` 维 | 见下表 |
+| critic 观测 | `42` 维 | actor 39 + `base_lin_vel(3)` |
+| 保持关节 | `neck_pitch`、`head_pitch`、`head_yaw`、`head_roll`、`mouth` | 实机无对应策略输出 |
+
+actor 观测顺序（`ACTOR_OBSERVATION_TERMS`）：`base_ang_vel`(3)、`projected_gravity`(3)、
+`command`(3)、`joint_pos`(10)、`joint_vel`(10)、`actions`(10)。critic 在其后追加
+`base_lin_vel`(3)。`base_lin_vel` 只出现在 critic，`validate_contract()` 在导入时强制这一点，
+避免真值线速度漏进实机可部署的 actor。
+
+与官方 `microduck_rl` 的**有意差异**（每条都在配置里就地注明理由）：
+
+1. 动作 10 维而非 14 维：本机颈头是 FEETECH/3532 混合且不做视觉追踪，头部命令会让
+   `joint_pos` 基线随命令漂移。上游 14 维里有 4 维是颈头。
+2. 动作缩放 `0.25` 而非 `1.0`：整机 3.29 kg、腿长更短，`1.0` 的单步目标变化会直接掀翻机身。
+3. 无 `height_scan` / 地形扫描：本机是平地，硬件也没有深度传感器。
+4. 推扰收到 `±0.3 m/s` 水平分量，且无角速度分量：上游 `±0.5 m/s` 对 3.3 kg 机体过强
+   （T041 实测第 4 条）。
+5. 命令范围收窄为 `vx(-0.4,0.4)`、`vy(-0.3,0.3)`、`wz(-1.0,1.0)`：与上游一致，
+   但删掉上游的 `head_pose`/`body_pose` 命令块（对应第 1 条）。
+
+验收命令与结果：
+
+```
+uv run --no-sync python -B tools/check_task_contract.py --device cuda:0
+```
+
+```
+timing: dt=0.002s decimation=10 control=50.0Hz
+action: dim=10 scale=0.25 names ok
+observations: actor=39 critic=42, order ok, no privileged actor terms
+privileged: critic tail == root_link_lin_vel_b; actor has 6 terms and none is base_lin_vel
+mapping: 10 per-joint pulses each command only their own joint
+held joints: 5 servos/neck stayed within 46.5 mrad of HOME under random actions
+reset: per-env reset isolated to the requested worlds
+run: 150 control steps finite obs/reward
+Contract check passed: device=cuda:0, envs=4, actor=39D, action=10D, control=50Hz.
+```
+
+检查过程中暴露并修正的三个真实问题（不是测试写法问题）：
+
+- **动作映射的判据从"位置"改为"指令目标"**：`apply_actions()` 写入的
+  `joint_pos_target` 与 `processed_actions` 之间还隔着编码器偏置
+  （`target = processed - encoder_bias`），启动事件给的 `±0.015 rad` 偏置会让
+  实测位置慢速收敛。比较 `processed_actions` 才能把"索引路由"和"PD 收敛"分开测。
+- **编码器偏置必须进期望值**：修正后仍差 `0.0096 rad`，正是 `encoder_bias` 在该关节上的取值。
+  现在期望值显式减去 `robot.data.encoder_bias`。
+- **特权项用结构断言而不是数值扰动**：最初的写法"只改线速度、断言 actor 不变"不成立，
+  因为重推一步物理会让 `base_ang_vel` 与 `projected_gravity` 一起变。改为直接断言
+  critic 末 3 维等于 `root_link_lin_vel_b`，且 actor 的 term 列表里没有 `base_lin_vel`。
+
+### T023 实现最小平地速度任务
+
+状态：完成。依赖 T022；参考 pollen-robotics/microduck_rl 官方平地任务 `Mjlab-Velocity-Flat-MicroDuck`。
+
+目标：在 `tasks/` 里做出可直接训练、也可被回放复用的平地速度环境。
+
+产物：`src/ht_microduck/tasks/flat_velocity/`（`velocity_env_cfg.py`、`__init__.py`）、
+`src/ht_microduck/tasks/common/mdp.py`、`tools/check_velocity_env.py`。
+
+结构：`make_flat_velocity_env_cfg(num_envs, seed)` 组合 mjlab 1.6 的场景、命令、动作与观测，
+奖励和终止按官方平地任务对齐，另加本机专用项。
+
+奖励（11 项，权重取官方 `microduck_rl` 平地任务的数值）：
+
+| 项 | 权重 | 说明 |
+|---|---|---|
+| `track_linear_velocity` | `2.0` | `std=sqrt(0.1)`，与官方一致 |
+| `track_angular_velocity` | `2.0` | `std=sqrt(0.5)` |
+| `upright` | `2.0` | `exp(-g_xy²/std²)`、`std=sqrt(0.05)` |
+| `dof_pos_limits` | `-1.0` | |
+| `action_rate_l2` | `-0.1` | 官方由课程从 `-0.1` 加到 `-1.0`；首版取起步值 |
+| `joint_torques_l2` | `-2e-4` | 本机专用（3.29 kg，力矩量级小） |
+| `joint_vel_l2` | `-2e-4` | 同上 |
+| `air_time` | `3.0` | 阈值 `0.125/0.300 s`，`command_threshold=0.01` |
+| `foot_clearance` | `-2.0` | 目标高 `0.02 m` |
+| `foot_slip` | `-0.1` | |
+| `self_collisions` | `-1.0` | 官方新增项；`primary`/`secondary` 两侧都是 `subtree=base_link` 的接触传感器（T044 修正） |
+
+终止（4 项）：`time_out`（超时，`time_out=True`）、`fell_over`（`bad_orientation`，70°，
+与 T038 的跌倒判据一致）、`illegal_contact`（机体触地，本机专用）、`nan_state`
+（非有限状态；不加它会让一个炸掉的环境通过优势归一化污染整个 batch）。
+
+事件：启动阶段必须有 `htdw3532_init` 与 `bam_init`（否则 3532 无法拿到逐世界的原生 PD 字段）；
+另有 `reset_base`、`reset_robot_joints`、`push_robot`（每 3–6 s，`±0.3 m/s` 水平）、
+`foot_friction`（`0.7–1.3`）、`encoder_bias`（`±0.015 rad`）、`base_com`（`±0.02 m`）。
+
+验收命令与结果：
+
+```
+uv run --no-sync python -B tools/check_velocity_env.py --device cuda:0
+```
+
+```
+spaces: actor=39D critic=42D action=10D dt=0.02s
+rewards: 11 terms -> track_linear_velocity, track_angular_velocity, upright, dof_pos_limits, action_rate_l2, joint_torques_l2, joint_vel_l2, air_time, foot_clearance, foot_slip, self_collisions
+commands: dim=3 ranges vx=(-0.4, 0.4) vy=(-0.3, 0.3) wz=(-1.0, 1.0)
+zero-action hold: 100 steps, 2/16 terminations (domain randomisation on; T038 measured 0/128 without it)
+random run: 300 steps, mean reward -20.375, terminations 16, truncations 0
+terminations: time_out is truncation, fell_over is terminal
+fall detection: flipped worlds terminated = 16/16
+Velocity env check passed: device=cuda:0, envs=16, steps=300, dt=0.02s.
+```
+
+**零动作保持 2/16 的定性**：这不是回归。T038 的 0/128 是在无 DR 的干净保持下测的；
+本任务同时开编码器偏置 `±0.015 rad`、足底摩擦 `0.7–1.3`、逐环境 CoM 偏移，
+多次重复（6×16）累计 1/96 终止，属偶发。检查据此改为"不超过 1/4 环境"而不是断言为 0，
+并把实测值打印出来，避免把 DR 的正常代价误读成站姿失败。
+
+**待办（不阻塞 T023 验收）**：`feet_clearance` 与 `foot_slip` 依赖足端 site 的世界系高度与速度，
+当前实现读 `asset.data.site_pos_w`；导出与回放前需与 `duck_project` 的世界系前扫口径对齐一次。
+
+### T024 实现本地网络与轨迹 Storage
+
+状态：完成。依赖 T023。
+
+目标：不引入 RSL-RL，自己实现 actor/critic、观测归一化、rollout 存储与 GAE。
+
+产物：`src/ht_microduck/algorithms/networks.py`、`storage.py`、`tests/test_networks.py`。
+
+- `Actor`/`Critic`：`(512,256,128)` ELU MLP，输入分别为 39/42 维，输出 10 维均值/标量。
+  与官方同构，便于日后再对照超参。
+- `RunningMeanStd`：`nn.Module`，带 `count` 缓冲，随 checkpoint 存取；用合并均值/方差的
+  增量公式，使"两个半批"与"一整批"得到相同统计（有测试守住）。
+- `GaussianDistribution`：状态无关的 `log_std`，`log_std` 截断到 `[-5,1]`。
+- `RolloutStorage`：`(num_steps, num_envs, dim)` 固定容量，`compute_returns()` 跑 GAE-λ，
+  并把 **真实终止** 与 **超时** 分开：真实终止不 bootstrap，超时保留价值估计。
+  理由是不区分时，20 s 的超时会被当成"死亡"，价值函数学到的就是"时间到了等于失败"。
+
+验收命令与结果：
+
+```
+uv run --no-sync python -B -m pytest -q tests/test_networks.py
+```
+
+`17 passed`。其中三条用手算值守住关键公式：`log_prob` 对标准对角高斯、
+熵对 `0.5·log(2πeσ²)`、GAE 对两步行进的手推递推（含真实终止与超时两种分支）。
+
+**实现中发现的真实 bug**：`GaussianDistribution` 的 `log_std` 是形状 `(10,)` 的参数，
+与 `(N,10)` 的均值广播后，`torch.clamp` 保留的是参数自身形状，导致 `entropy()` 和
+`log_prob()` 的 `sum(dim=-1)` 把 batch 维也压掉了（返回标量）。已改为在构造时
+`expand_as(mean)`；这条正是被"形状断言 + 手算熵"测试抓到的，不是靠肉眼。
+
+### T025 实现本地 PPO 更新
+
+状态：完成。依赖 T024。
+
+产物：`src/ht_microduck/algorithms/ppo.py`、`tests/test_ppo.py`。
+
+- 裁剪代理目标 + 裁剪价值损失 + 熵奖励，梯度按 `max_grad_norm=1.0` 裁剪。
+- 超参取官方值：`gamma=0.99`、`lam=0.95`、`clip=0.2`、`entropy_coef=0.01`、
+  `5` epochs / `4` minibatches、`lr=1e-3`、`desired_kl=0.01` 的自适应步长。
+- **小批量内优势归一化**：本任务的奖励是"一个大跟踪项 + 一堆小惩罚项"，原始优势跨度大；
+  不归一化时首个 iteration 的 `approx_kl` 达 `2.99`、`clip_fraction` 达 `0.90`。
+  归一化后首轮 `kl=1.02`、第三轮 `0.068`。同时对零方差 batch 加保护，避免除零后梯度全零。
+
+验收命令与结果：
+
+```
+uv run --no-sync python -B -m pytest -q tests/test_ppo.py
+```
+
+`12 passed`。裁剪性质不是"看损失变小"，而是构造两批只差 `old_log_prob` 的数据，
+直接断言 `ratio=1.1` 时损失约 `-1.1`、`ratio=50` 时仍约 `-1.2`（即停在信任域边界）。
+
+**写测试时被自己纠正的一处判断**：最初想断言"ratio 很大时损失有界"，但标准 PPO 里
+负优势对应的目标本来就没有下界；正确可测的命题是"正优势 + 超出信任域时饱和在
+`-clip·A`"。测试改为显式关掉归一化、只用正优势，避免用一个错命题掩盖真实行为。
+
+### T026 接通 Runner、训练入口与短跑基线
+
+状态：完成。依赖 T023、T025。
+
+产物：`src/ht_microduck/algorithms/runner.py`、`src/ht_microduck/cli/train.py`、
+`pyproject.toml` 的 `[project.scripts]`、`tests/test_runner.py`。
+
+- `OnPolicyRunner` 负责"采样 N 步 → 更新 GAE → PPO 更新"，并把归一化器统计的更新、
+  指标记录、checkpoint 存取集中在一处。
+- checkpoint 里同时存 `model`、`optimizer`、`iteration`、`learning_rate`、完整 `cfg`
+  和**契约快照**；加载时若契约的观测维度不符直接报错，而不是把权重硬塞进改过的网络。
+- 指标每个 iteration 追加一行 JSONL，崩溃也保留已有数据。
+
+验收命令与结果：
+
+```
+uv run --no-sync duck-train --num-envs 16 --iterations 2 --seed 0 --device cpu
+```
+
+```
+training: envs=16 iterations=2 seed=0 actor_obs=39 action=10 control=50Hz
+iter     1 reward -0.063 ep_return -1.27 value_loss 0.1169 kl +0.39855 lr 6.67e-04
+iter     2 reward -0.067 ep_return -1.81 value_loss 0.0544 kl +0.10128 lr 4.44e-04
+saved final checkpoint and metrics to .artifacts/t023/entry
+```
+
+恢复验证（同一 checkpoint 续训，迭代号与优化器状态都接上）：
+
+```
+resumed from .../checkpoint_last.pt at iteration 4
+iter     5 reward -0.069 ep_return -1.92 value_loss 0.0369 kl +0.02501 lr 1.32e-04
+iter     6 reward -0.070 ep_return -2.14 value_loss 0.0662 kl +0.02236 lr 8.78e-05
+```
+
+`tests/test_runner.py` 用替身环境跑通 9 条测试（含种子可复现、契约不符时报错、
+指标追加），`make check` 通过。
+
+**未完成的一处**：本轮三次 GPU 短跑曾被并发进程占满显存（`Go2-Chase-Flat` 训练常驻
+7.1/8.0 GiB），最终训练验证在 `--device cpu` 上完成；GPU 上只跑通了环境的
+`check_task_contract.py` 与 `check_velocity_env.py`。GPU 训练证据留到 T027 一并补，
+届时需要显存空闲窗口。
+
+**明确不宣称的事**：以上短跑只证明"链路通、loss 有限、checkpoint 可读写可恢复"，
+不证明学会行走。奖励均值在 `-0.07` 附近、episode 长度 20–30 步，都是初始策略的表现。
+该 `-0.07` 的绝对值在 T044 修复自碰撞误计后不再适用（修复后同类短跑为 `-0.003` 到 `+0.007`），
+但"没学会行走"这个结论不受影响。
+
+#### 追加（2026-10-27）：训练可用性复核
+
+用户问"现在能不能训练"。本轮只做只读复核加短跑，不新增任务、不改代码、不改超参。
+
+环境限制先说明：本沙箱**没有 GPU 设备节点**（`/dev/nvidia*` 不存在，`nvidia-smi` 报
+`couldn't communicate with the NVIDIA driver`），`torch 2.14.1+cu130` 报
+`cuda_available=False`、`device_count=0`；宿主内核模块已加载但未透传到本进程。
+因此默认的 `duck-train`（`--device cuda:0`）在环境构造阶段就失败：
+`RuntimeError: No CUDA GPUs are available`。这不是代码缺陷，但说明**默认入口在本机跑不起来，
+必须显式 `--device cpu`**。
+
+CPU 路径实测（`UV_CACHE_DIR`、`TMPDIR`、`WARP_CACHE_PATH`、`TORCHINDUCTOR_CACHE_DIR`
+均指向项目内 `.artifacts/`；`~/.cache/uv` 与 `~/.cache/warp` 在本机只读，首次没设会
+`OSError: [Errno 30] Read-only file system`）：
+
+```
+uv run --no-sync duck-train --num-envs 64 --iterations 100 --seed 0 --device cpu \
+  --save-interval 25 --out-dir .artifacts/status-check/learn
+```
+
+| 迭代 | mean_reward | episode_return | episode_length | done_fraction |
+|---|---|---|---|---|
+| 1 | `+0.0136` | `-0.12` | 24.0 | 0.0007 |
+| 25 | `+0.0094` | `+0.38` | 54.2 | 0.0156 |
+| 50 | `+0.0185` | `+0.84` | 60.6 | 0.0150 |
+| 75 | `+0.0223` | `+2.21` | 104.3 | 0.0091 |
+| 100 | `+0.0251` | `+3.63` | 156.3 | 0.0033 |
+
+100 个迭代共 421 s（约 4.2 s/iter），`approx_kl` 从 `0.163` 收敛到 `0.013`，
+学习率自适应降到 `1.32e-04`。恢复验证：`--resume .../checkpoint_100.pt --seed 7`
+从 iteration 100 接着跑到 102，优化器与迭代号都接上。
+
+另一条短跑（64 环境 4 迭代、256 环境 3 迭代）同样通过；`make check` 全绿
+（179 项测试 + 8 subtests、Ruff、模型编译、锁文件），锁文件检查同样要项目内 `UV_CACHE_DIR`。
+
+结论与边界：
+
+1. **训练链路是通的**，CPU 上能采样、更新、写指标、存 checkpoint、恢复续训。
+   从 episode 长度 24 → 156 步和 return 由负转正看，策略确实在学（不是随机基线）。
+2. **还远没学会走**。episode 上限是 20 s / 1000 步（`EPISODE_LENGTH_S` × 50 Hz），
+   156 步约 3.1 s，绝大多数 episode 仍以跌倒终止。
+3. **CPU 不适合正式训练**。256 环境 12.13 s/iter（24 步）= 约 506 env-step/s；
+   T036 探针在 RTX 4060 上的量级是 `1.3e4` env-step/s（不同探针，非同一路径的对照）。
+   按此估算，CPU 上跑 1000–4000 迭代的正式训练要数天。
+4. **GPU 证据仍缺**，与 T026 原文的欠账一致；`docs/development.md` 里"RTX 4060 8 GB"
+   的运行数据本轮无法复现或反驳，需要用户在有 GPU 设备节点（可见 `/dev/nvidia*`、
+   `nvidia-smi` 正常）的机器上跑 `duck-train` 默认参数补测。
+
+本轮临时产物（`.artifacts/status-check/`、`.artifacts/checks/run-DAze415b/`、
+`.artifacts/checks/run-qzGsgrXt/`）在复核结束后删除，未保留训练出的策略。
+
+#### 追加（2026-10-27 晚）：GPU 恢复可见，2048 环境需下调接触缓冲区
+
+上一条说"无 GPU 设备节点"只在当时成立。用户随后放开了设备节点，现在
+`/dev/nvidia0`、`/dev/nvidiactl`、`/dev/nvidia-uvm` 都可见，`nvidia-smi` 正常，
+`torch.cuda.is_available()` 为 `True`。**GPU 训练现在可以实际运行。**
+
+但 `--num-envs 2048` 用任务默认的 `nconmax=128`、`njmax=512` 会失败：
+
+```
+RuntimeError: Graph creation error: Warp CUDA error 2: out of memory
+  (in function wp_cuda_graph_create_exec)
+```
+
+失败点不是普通的张量分配，而是 Warp 在捕获 CUDA graph 时分配执行实例。默认缓冲把
+2048 世界的图捕获推过了 8 GB。实测各规模占用（`num_steps_per_env=24`，含 mjlab/Warp
+常驻部分约 3.6 GB，其中外部 `Go2-SuperMimic-Flat` 进程占 3.1 GB）：
+
+| 环境数 | 缓冲区 | 结果 | 占用 |
+|---|---|---|---|
+| 1024 | 128 / 512 | 通过，graph 生效 | — |
+| 1536 | 128 / 512 | 通过 | 6987 MiB |
+| 2048 | 128 / 512 | **OOM（graph 捕获）** | — |
+| 2048 | 64 / 512 | 通过 | 6166 MiB |
+| 2048 | 96 / 384 | 通过 | 6985 MiB |
+| 2048 | 64 / 256 | 通过 | 6298 MiB |
+
+因为缓冲区是每世界上限、不是实际用量，先测了这台机器人真实的接触/约束峰值
+（512 环境、随机大幅动作 500 步、故意跌倒并自碰撞）：
+
+```
+max_contacts_per_world = 13
+max_nefc              = 55
+```
+
+即 `nconmax=64`、`njmax=256` 仍是实测峰值的 4.9 倍 / 4.7 倍余量。为保留默认行为、
+不把临时实验值写死进任务配置，`duck-train` 新增两个可选覆盖参数
+`--nconmax`、`--njmax`；不传时仍用任务默认的 `128 / 512`。
+
+**吞吐很差，原因是外部争抢而非代码**。2048 环境实测 5.93 s/iter（12 次迭代，
+5.08–7.32 s），约 8290 env-step/s；同样条件下 1024 环境是 4.5 s/iter。
+单步拆解开销（2048 环境、24 次采样）：
+
+```
+env.step 本身            94.1 ms/步
+env.step + nonzero.tolist 95.3 ms/步
+torch.nonzero(...).tolist() 0.5 ms/步
+```
+
+即 95% 时间在 `env.step`，`runner.py` 里每步的 host 同步只占 0.5 ms，不是瓶颈。
+`nvidia-smi` 显示另一个 `Go2-SuperMimic-Flat`（pid 499718，占 3.1 GB、利用率约 90%）
+同时在跑，这是耗时随规模不降反升的原因。
+
+按 5.93 s/iter 估算，20000 迭代约 **33 小时**（1.4 天）；若外部进程退出应明显加快。
+checkpoint 每个约 4.5 MB，1000 轮存一次共 20 个，约 90 MB。
+
+本轮临时产物（`.artifacts/gpu-probe/`、`.artifacts/checks/run-8e9FD43X/`、
+`.artifacts/checks/run-jSndYcPu/`）在复核结束后删除。`make check` 通过
+（179 项测试 + 8 subtests）；改动仅新增两个 CLI 参数。
+
+### T044 修复自碰撞传感器误计地面接触
+
+状态：完成。依赖 T023；用户报告"脚与地面的接触也算成自碰撞"。
+
+目标：让 `self_collisions` 只统计机器人自身两处之间的接触，不再把站立时
+的足底-地面接触算进去。
+
+问题定位：`_self_collision_sensor()` 原本是 `primary=subtree:base_link`、
+`secondary=None`。`secondary=None` 在 mjlab 里表示**不加参考过滤**，因此该传感器会
+命中机器人与任意物体的接触。实测（`num_envs=2`，零动作）：
+
+| 状态 | `found`（旧） | `found`（修复后） |
+|---|---|---|
+| HOME 站立（贴地） | `8.0` | `0.0` |
+| 整体抬高 1 m | `0.0` | `0.0` |
+| 腿折到极限（真实自碰撞） | `2.0` | `2.0` |
+
+按 `reward_manager._step_reward` 拆开单步期望值（32 环境、噪声 0.3、100 步）：
+
+```
+track_linear_velocity   +0.01782
+track_angular_velocity  +0.01530
+upright                 +0.02087
+其余惩罚项合计           -0.00526
+self_collisions         -0.10885   ← 旧值，一个人顶掉全部正奖励
+```
+
+即站立本身每步被扣 `-0.109`，而正奖励合计只有约 `+0.054`，`self_collisions`
+一项就主导了任务奖励，且方向与"学会走路"无关。
+
+修复：`secondary` 改为 `ContactMatch(mode="subtree", pattern="base_link", entity=ROBOT)`，
+与 mjlab 参考任务 `tasks/velocity/config/go1/env_cfgs.py` 的 `subtree` 对 `subtree`
+写法一致。改动前 `docs/development.md` 已写"用 `subtree=base_link` 的接触传感器"，
+与实现不符，本次一并纠正。
+
+A/B 短跑（32 环境、100 迭代、CPU、种子 0、同配置）：
+
+| | iter 1 | iter 100 | episode 长度 |
+|---|---|---|---|
+| 修复前 | `-0.0611` | `-0.0561`（ep_return `-1.06`） | 22.0 → 18.8 |
+| 修复后 | `-0.0027` | `+0.0074`（ep_return `+0.23`） | 22.0 → 29.6 |
+
+修复后奖励转正、episode 变长；修复前奖励几乎不动且 episode 变短。这仍然只说明
+奖励信号恢复正常，**不证明学会行走**。
+
+验证：
+
+```
+uv run --no-sync python -B tools/check_velocity_env.py --device cpu
+uv run --no-sync python -B -m pytest -q tests/test_velocity_env_cfg.py
+```
+
+```
+zero-action hold: 100 steps, 2/16 terminations (domain randomisation on; T038 measured 0/128 without it)
+self-collision while standing: raw term max 0.000 (expected 0)
+random run: 300 steps, mean reward 12.982, terminations 16, truncations 0
+Velocity env check passed: device=cpu, envs=16, steps=300, dt=0.02s.
+```
+
+`tests/test_velocity_env_cfg.py` 3 条通过；把 `secondary` 改回 `None` 后
+有 2 条失败，说明这组测试确实能拦住该回归。`check_velocity_env.py` 新增
+"站立时 `self_collisions` 必须为 0"的断言，随机跑 300 步的奖励也从 `-19.892`
+变为 `+12.982`。
+
+本节只改 `self_collisions` 口径；`feet_air_time` 在落地步为负、`feet_clearance`
+读不到 `default_site_pos_w`、`BODY_MASS_RANGE` 未接入，这三项作为待办另行处理。
+
+### T045 修复独立预览的积分器与初态
+
+用户报告：直接运行 `python src/ht_microduck/robots/ht_microduck/ht_microduck_constants.py`，
+机器人倒地后一直抽动（而不是倒地不动），并且看不到 `init_state`。两个现象是**两个独立缺陷**，
+都用 A/B 定位到具体原因，不是观感问题。
+
+范围：只改预览入口 `__main__` 块和 `tools/check_robot.py --viewer` 的重复实现；不动训练
+环境、执行器参数、源 XML 和默认增益。
+
+**缺陷一：预览用的积分器和训练不一致。** 旧预览 `scene.compile()` 后直接交给
+`viewer.launch`，拿到的是 XML 默认的显式 Euler（`mjINT_EULER`，实测编译结果
+`model.opt.integrator == 0`）。训练侧 `velocity_env_cfg.py` 经 `MujocoCfg` 改用
+`implicitfast`（`== 3`）。无刷关节当时 armature 为 **0**（本轮才补上 0.002，见下文
+"站姿抖动"一节；此处 `0.0018` 是早期误记，实测 12 个无刷关节当时全为 0），`kd 0.4`、
+`dt 0.002 s`，显式阻尼在该组合下发散：
+
+| 积分器 | 末态根高 | 收敛后 max\|qvel\| |
+|---|---|---|
+| euler（旧预览） | 0.0954 m | 32.0 rad/s |
+| implicitfast（训练） | 0.1655 m | 0.20 rad/s |
+
+即"一直抽"就是显式阻尼的数值不稳定，数值上每步都在抖。同一组对照还排除了"求解器迭代
+不够"这一猜测：`iterations/ls_iterations` 调成训练的 10/20 对 euler 完全没有改善
+（两次都是 24.35 rad/s），换积分器是唯一有效的变量。把 `kd` 单独设为 0 时抖动降到
+5.96 rad/s、只留阻尼项时为 23.75 rad/s，确认主因是速度阻尼项。
+
+**缺陷二：`init_state` 从未生效。** mjlab 把初态写成 `init_state` 关键帧（`nkey=1`），
+但要显式 `mj_resetDataKeyframe` 才会用上。旧代码只传 model 让 `viewer.launch` 自己建
+`MjData`，起点是 XML 默认位姿（根高 0.171 m、全部关节为 0），关键帧里的 HOME 蹲姿
+（根高 0.1534 m）根本没出现——这正是用户"看不到 init_state"的直接原因。
+
+顺带修正一个会让预览完全无法站立的问题：本模型的 `ctrl` 是仿射 PD 输入
+（`ctrl = kp·q_target`），不是力矩。若把 `ctrl` 置 0，等于命令所有腿关节回零，机器人只会
+塌下去。新代码用每个执行器编译后的 `biasprm[1]` 反推 `kp`，再写 `kp·HOME_JOINT_POS`。
+HD1910 编译成纯力矩电机、无位置偏置，`kp` 读作 0，头部因此最多下垂 0.1 rad（预览不建模
+BAM），不影响腿部站立。
+
+实现：常量模块新增 `make_preview()`，负责编译实体、套用 `MujocoCfg`、复位到
+`init_state`、写入 HOME 保持命令；`__main__` 与 `tools/check_robot.py --viewer` 都改用它，
+消掉了原先那份会静默预览不同物理的重复实现。
+
+**按 `legged_wbc_mjlab` 参考重写入口。** 用户之后要求参考
+`/home/sunteng/projects/legged_wbc_mjlab/src/assets` 与官方 microduck 的写法。该目录下
+`go2/go2_constants.py`、`ri_4438/ri_4438_constants.py`、`ri_5036/`、`go2_piper/` 的入口统一是：
+
+```python
+robot = Entity(get_*_robot_cfg())
+viewer.launch(robot.spec.compile())
+```
+
+它的优点是不经过 `Scene`，因此不分配 torch 张量、不需要 `device`，预览在 GPU 被训练占满时
+照样能开。本轮把 `make_preview()` 改成同样的结构（`Entity` 直连 + 自己的 `_add_preview_ground`），
+去掉了 `Scene` 依赖，函数签名从 `make_preview(device)` 变成 `make_preview()`。
+
+但参考写法**不能照抄**，实测对比（2500 步）：
+
+| 写法 | 根高轨迹 | 末态 max\|qvel\| |
+|---|---|---|
+| 参考式单行（无地面、无 `MujocoCfg`、不应用关键帧） | 0.171 → -4.76 → -19.50 → -44.05 → -78.41 | 49.06 rad/s |
+| 本轮 `make_preview()` | 0.1534 → 0.1501 → 0.1498 → 0.1498 → 0.1497 | 0.55 rad/s |
+
+参考式单行在本机连地面都没有（`robot.spec` 只有机器人本体），直接自由落体到 `z=-78`。所以
+本轮只借用它的**结构**，保留已验证的两处差别：套用 `MujocoCfg`、显式 `mj_resetDataKeyframe`。
+地面、棋盘纹理和定向光按 mjlab `TerrainEntityCfg(terrain_type="plane")` 的默认值补在预览 spec 上
+（`friction=(1.0, 0.005, 0.0001)`、`texrepeat=(4,4)`、`sun` 0.0/0.0/1.5 定向），机器人 XML 仍然
+不含地面和灯光（T016/T039），预览不会出现两个地面。
+
+关键帧里存的 `ctrl` 是**关节目标角**（如 `0.85`），不是运行时命令（`kp·q_target = 8.5`）。
+这一点在参考写法里看不出来，因为参考项目用的是 plain `motor`。本轮据此把 `ctrl` 的推导
+改成 `-biasprm[:, 1] * key.ctrl`，和原先按名字查 `HOME_JOINT_POS` 的结果逐元素一致
+（实测 `allclose` 为真），但少了一层名字匹配、也不会在两处定义之间漂移。
+
+验收：
+
+```
+make check
+  → 178 passed, 8 subtests passed（新增 3 条，原 175）
+
+uv run --no-sync python -B src/ht_microduck/robots/ht_microduck/ht_microduck_constants.py
+  → GLX: Failed to create context（本沙箱无 /dev/nvidia*，仅图形受限，CUDA 报错已消失）
+```
+
+无头 A/B（2500 步，同一场景）：
+
+| | 根高轨迹 | 末态 max\|qvel\| |
+|---|---|---|
+| 旧预览 | 0.171 → 0.1033 → 0.0952 → 0.0964 → 0.0982 | 29.57 rad/s |
+| 新预览 | 0.1534 → 0.1501 → 0.1498 → 0.1498 → 0.1497 | 0.55 rad/s |
+
+新增 3 条测试（`tests/test_robot_entity.py`）：`test_preview_starts_from_the_init_state_keyframe`
+断言 `qpos` 等于关键帧、根高等于 `HOME_FRAME.pos[2]`、关节不全为 0、且 `ctrl == kp·key.ctrl`
+（同时仍逐项对照 `kp·HOME_JOINT_POS`）；`test_preview_uses_the_training_integrator_and_holds_the_stance`
+断言积分器与 `MujocoCfg` 一致且不是 euler，并跑 1000 步后要求 `max|qvel| < 2.0`、根高 `> 0.1`；
+`test_preview_adds_one_ground_and_light_without_touching_the_robot_xml` 断言预览只有一个
+`terrain` 平面、摩擦 `1.0`、1 个灯光/纹理/材质，且源 XML 仍无灯光与平面。把两处修复同时
+回退验证：前 2 条都失败，其余照常通过，说明这组测试能拦住该回归。
+
+未解决/未验证：本沙箱没有 GPU 设备节点，`nvidia-smi` 显示 RTX 4060 被外部
+`Go2-Chase-Flat` 训练占用，且 GLX 无法创建上下文，因此**无法实际打开窗口验证 GUI 观感**，
+只能验证其编译、初态、积分器、地面装配与无头物理行为。需要用户在有图形和空闲 GPU 的机器上
+跑一次确认。参考目录 `legged_wbc_mjlab` 与官方 microduck 仓库本轮**只读**，未修改，也不受
+GitHub 网络受限影响（本地已存在该目录）。
+
+#### 追加：站姿抖动来自缺失的转子惯量（armature）
+
+用户反馈“会抖动”。无头定位后确认：站姿高度稳定（`root z` 均值 0.14975、峰峰值 0.00012 m），
+但关节持续高频嗡嗡（末 5 s 平均 `|qvel|`：`l_ankle 0.2665`、`l_hip_pitch 0.2241`、
+`l_calf 0.1970`），FFT 主频 **6.0 Hz**，ankle `qvel` 每 100 步换向约 7 次。
+
+排除项（同一场景 2500 步，均值 `|qvel|`）：求解器迭代 `10/20`、`50/25`、`100/50`、`200/100`
+结果**完全相同**（0.0961）；`implicit` 0.0959、`rk4` 反而 7.6299；接触稳定不抖（`ncon`
+恒为 6，左右足 `fz` 均值 16.704/15.590 N，总重 32.321 N）；**去掉重力抖动直接归零**；
+`dt` 减半抖动也减半（0.1055→0.0626→0.0341→0.0173）——这是显式/隐式 PD 环路“欠惯性”的特征，
+不是求解器或接触问题。逐执行器审计发现 12 个无刷关节的 `dof_armature` **全为 0**
+（只有 3 个 HD1910 舵机有 `0.001827`，来自 BAM 厂家辨识值），即关节几乎没有惯性。
+
+修复：`BRUSHLESS_ACTUATOR_CFG` 显式传 `armature=BRUSHLESS_ARMATURE`，取值由用户提供为
+`0.0069753532276 kg·m²`（关节输出侧）。armature 扫描（同一站姿、同一场景）：
+
+| armature | 均值 \|qvel\| | root z 峰峰值 | 渲染帧间像素差 |
+|---|---|---|---|
+| 无（0） | 0.10518 | 0.000115 | 1.706 |
+| 0.001 | 0.0363 | — | — |
+| 0.002（早期占位） | 0.02494 | 0.000124 | 0.285 |
+| **0.0069753532276（采用）** | **0.00366** | **0.000006** | **0.071** |
+| 0.01 | 0.00264 | 0.000004 | 0.068 |
+
+渲染帧间像素差用 EGL 离屏渲染客观量化“肉眼可见的抖”（本沙箱无法查看渲染图）：无 armature
+1.706、占位 0.002 时 0.285、真实值 0.0069753532276 时 **0.071**，即真实值把可见抖动降
+**24 倍**（占位值只有 6 倍）。训练环境同样受益：零动作 200 步平均 `|qvel|` 从 **0.193 降到
+0.00649**（30 倍），`root z` 0.1503 不变。
+
+奖励用**同一协议**（8 环境、种子 0、150 步零动作）对照，避免换协议造成的假象：
+
+| armature | 全程 150 步均值 | 后 100 步均值 |
+|---|---|---|
+| 0（无） | 0.0983 | 0.1001 |
+| 0.002（占位） | 0.1034 | 0.1033 |
+| **0.0069753532276** | **0.1034** | **0.1033** |
+
+即真实值与占位值奖励相同、比无 armature 略好，**没有变差**。（期间出现过一次
+0.0811，是本轮把环境数从 8 改成 4、并只统计后 50 步造成的协议差异，非真实退化，已用上表
+同协议复测排除。）
+
+**取值来源：** 用户于 2026-10-27 提供，为 HTDW-3532 的关节侧 armature。在此之前本轮已查证
+全部可得公开来源均无该参数——用户提供的 `HTDW-3532-02-DNE_user_datasheet.png` 只有转速–力矩
+曲线；本地 `params/README.md` 明确“不推定转子惯量”；高擎官网产品页 15 个型号**已不含 3532**
+（已下架），官方手册 `book.hightorque.cn/Module20260917`（15 个型号）**完全没有惯量字段**；
+官方“模型”下载 `HTDW-3532-02-DNE.zip` 只有一个 SolidWorks `STEP` 几何体（无质量属性）；
+`store.hightorque.cn` 该型号页已 404；参考项目 `legged_wbc_mjlab` 对 RI-5036 同样写
+“没有推断…转子惯量”（其 `docs/development.md:2314`）。因此该值此前只能用占位值
+`0.002`（沿用官方 duck MJCF 对每个关节的统一硬编码，见 `src/htdk/model.py:64`），本轮已用
+用户提供的真实值替换。
+
+**合理性核对（仅佐证，不是来源）：** 按 32:1 折算回转子侧
+`0.0069753532276 / 32² = 6.81e-6 kg·m² = 68.1 g·cm²`，与该尺寸电机约 60 g·cm² 的钢质转子
+量级一致；而占位值 `0.002` 只相当于 19.5 g·cm²。数值带 11 位有效数字，应按用户给定保留，
+不做多余修约。舵机 `0.001827` 不同，它是飞特 BAM 厂家辨识值
+（`bam/params/feetech_hd1910_7_4V/m6.json`，固定到 commit、SHA256 记录在
+`actuators/HD_1910_C001/params/README.md`），属厂家模型参数而非本机实测；用户明确表示
+舵机的值不清楚，本轮不臆测替换。
+
+另：头部 `head_yaw` 站姿仍缓慢漂移 5.4°、`mouth` 7.4°（`ptp` 3.96°），原因是预览里 3 个
+舵机的 BAM 模型不参与编译（`biastype=NONE`、位置增益为 0），属无驱动自由下垂，不是高频抖动。
+实测把头部按 `kp=7.345/kd=0.1074` 固定后帧间像素差仅 0.285→0.277（占位值下的测试），
+对观感无影响，本轮不为预览引入 BAM 建模。
+
+验收：`make check` → **179 passed**（新增
+`test_brushless_joints_carry_reflected_rotor_inertia_and_stop_buzzing`，断言 12 个无刷关节
+`dof_armature == BRUSHLESS_ARMATURE`、站姿 3 s 平均 `|qvel| < 0.06`、根高 `> 0.14`）；
+`tests/test_robot_actuators.py` 里原先断言 `armature is None` / `dof_armature == 0.0` 的两处
+改为断言 `BRUSHLESS_ARMATURE`（源 XML 仍断言 `armature == 0.0`，因为改动只经 cfg，不动 XML）。
+把 `armature=BRUSHLESS_ARMATURE` 摘掉后这 4 条测试全部失败，恢复后通过，确认能拦住回归。
 
 ## 新任务模板
 
@@ -2165,3 +3039,498 @@ uv run --no-sync python tools/check_robot_scene.py --device cuda:0 --steps 150
 创建目录后通过。后续运行 GPU 检查前应先确认 `TMPDIR` 存在。
 
 剩余问题：`imu` 安装偏移未标定（T030）；站姿标定（T038）未做；未执行 Git 写操作。
+
+### 2026 年 10 月 27 日 T040
+
+根目录 README 从 360 行整理为 136 行，突出项目用途、模型检查与预览、GPU 专项检查、
+机器人配置示例和文档导航。安装流程与参数细节引用已有说明，任务进度统一指向本页；
+移除已不存在的 `HT_MICRODUCK_ARTICULATION` 示例，保留 12+3 分组、传感器观测边界、
+未标定参数与训练入口尚未实现的说明。GPU 示例补齐项目内临时目录和缓存设置。
+仅修改 `README.md` 与本页，未改变代码、模型、依赖或测试。
+
+实际验证：
+
+- `make check` 退出码 0：锁文件、Ruff、134 项测试与 8 项子测试、模型编译与差异空白检查通过。
+  模型仍为 15 关节、16 网格，`nq=22`、`nv=21`、`nu=0`、质量 `3.2947 kg`。
+  保留第三方 Torch 的既有弃用提示。
+- 使用 `uv run --no-sync python -B -` 执行内存中的文档核查：12 个本地链接及锚点通过，
+  Bash 示例通过 `bash -n`，Python 示例实际创建 4 环境的 `SceneCfg` 配置并核对平地与两组执行器，
+  没有创建仿真或启动 GPU 动态检查。专项临时目录为 `.artifacts/t040-readme/run-Pnbu2FVf/`。
+- 使用 `python3 -B -` 单独核对当前任务表，41 个编号唯一；完成时没有进行中任务。
+  自审确认命令参数、默认规模、目录和配置符号与代码一致；未新增测试，未运行 GUI、训练或实机。
+
+所有检查进程结束后清理本轮专项目录与 `.artifacts/checks/run-9OoUDOQA/`，
+清理并复扫项目字节码，排除 Git、虚拟环境、第三方依赖及符号链接，保留已有实验产物。
+T040 完成，无本次未解决项；后续仍按 T001 → T002 复核 → T038 → T022 的依赖推进，
+M0/M1 阶段状态不变。未执行 Git 暂存、提交或推送。
+
+### 2026 年 10 月 27 日 T041
+
+对照用户指定的三个参考项目复核下一步。两路子代理分别只读分析
+`pollen-robotics/microduck` + `pollen-robotics/microduck_rl`（固定 `develop@b02fdea`）与
+`/home/sunteng/projects/duck_project`；主代理核对本机代码、用 GitHub API 确认默认分支，
+并在项目内写一次性探针做可行性实测。未修改机器人源码、参数、XML、依赖或测试，未提交 Git。
+
+实际执行的命令（临时与缓存目录均在本项目内，Python 全部禁用字节码）：
+
+```bash
+cd /home/sunteng/projects/HT_microduck_lab
+make check
+task_t041="$PWD/.artifacts/t040-next-step"
+mkdir -p "$task_t041/tmp" "$task_t041/gpu/tmp"
+export TMPDIR="$task_t041/gpu/tmp" PYTHONDONTWRITEBYTECODE=1
+export WARP_CACHE_PATH="$task_t041/gpu/warp" TORCHINDUCTOR_CACHE_DIR="$task_t041/gpu/torch"
+timeout 400 uv run --no-sync python -B tools/check_robot_scene.py --device cuda:0 --num-envs 4 --steps 150
+timeout 500 uv run --no-sync python -B .artifacts/t040-next-step/probe_velocity.py cuda:0
+timeout 500 uv run --no-sync python -B .artifacts/t040-next-step/probe_throughput.py cuda:0 4096 60
+timeout 1500 uv run --no-sync python -B .artifacts/t040-next-step/probe_home_final.py cuda:0
+```
+
+结果：
+
+- `make check` 退出码 0：锁文件、Ruff、134 项测试与 8 项子测试、模型与 Git 差异空白检查通过；
+  被动模型 `nq=22`、`nv=21`、`nu=0`、15 关节、16 网格、质量 `3.2947 kg`。
+- 整机场景检查退出码 0：`cuda:0`、4 环境、150 步、`dt=0.002 s`，末根高
+  `0.166165–0.166172 m`、峰值力矩 `0.138278 N·m`、峰值关节速度 `0.184298 rad/s`，
+  `planes=1`、双脚接地、IMU 传感器 5 个、局部 reset 与目标映射通过。
+- 本机已具备把 mjlab 1.6 平地速度模板套到本机器人的条件，但需显式改六处
+  （接触传感器、`pose` 的 std 字典、地形扫描、动作关节子集、两个 startup 事件、DR asset 选择器）；
+  改完后 `obs[actor]=(2,52)`、`obs[critic]=(2,64)`、动作 `(2,10)`，20 步零动作奖励有限。
+  探针只用于判断可行性，不作为任务环境已实现的证据。
+- 吞吐：256 / 1024 / 4096 环境分别为 `1.47e4` / `1.29e4` / `4.20e4` env-step/s。
+- HOME 保持（固定初态、无推扰、50 Hz、32 环境 × 3 种子 × 5 s）：
+  全零站姿 `kp=10` 跌 7/96、`kp=20` 跌 2/96；水平站姿（`r=+0.0873`、`l=−0.0873`）
+  分别为 5/96、1/96；下调根高无改善。
+- 跌倒来源定位：保留全部 DR、仅去掉 `push_robot`，`worst_tilt` 由 70.30° 降到 19.25°、
+  跌倒 0/8；单独去掉 `base_com`/`encoder_bias`/`foot_friction` 都无效。
+- 脚底平面：CPU 顶点拟合确认镜像内收 `+0.0873/−0.0873` 才使两侧同时水平（0.11°/0.11°），
+  同号组合会得到 0.11°/7.65°。
+- 控制周期：同为 50 Hz，`dt=0.005`+dec4 跌倒 3–4/4，`dt=0.002`+dec10 为 0–1/4，
+  说明上游 50 Hz 的结论依赖 2 ms 物理步长。
+
+据此关闭 T001（Git 基线已由 `21589d7` 满足四条验收条件）与 T002（T016 证据 + 本轮场景检查），
+并修正 T038 的前提：站姿必须与默认增益一起定，且符号为镜像内收。
+T041 未运行训练、GUI 或实机。所有探针与子代理结束后删除 `.artifacts/t040-next-step/`
+及本轮 `.artifacts/checks/run-*`，清理并复扫项目字节码，排除 Git、虚拟环境、
+第三方依赖与符号链接，保留已有实验产物。T041 完成，无遗留阻塞；
+下一项为 T038，随后 T022 → T023。M0/M1 阶段状态不变，未执行 Git 暂存、提交或推送。
+
+### 2026 年 10 月 27 日 T042
+
+用户要求核对三处模型是否对碰撞体（collision geom）做了简化：本机
+`src/ht_microduck/robots/ht_microduck/xmls/HT-DK_URDF.xml`、官方
+`pollen-robotics/microduck_rl`（固定 `develop@b02fdea`）以及 `/home/sunteng/projects/duck_project`。
+只读核对 XML/URDF/配置，并在项目内一次性探针里编译三份模型量测碰撞凸包规模；
+未修改任何模型、源码、参数或测试，未提交 Git。
+
+实际执行的命令（临时与缓存目录均在本项目内，Python 全部禁用字节码）：
+
+```bash
+cd /home/sunteng/projects/HT_microduck_lab
+export UV_CACHE_DIR="$PWD/.artifacts/manual-checks/uv-cache"
+export TMPDIR="$PWD/.artifacts/manual-checks/tmp"
+mkdir -p "$UV_CACHE_DIR" "$TMPDIR"
+make check
+# 探针：编译三份模型，读 mjModel.mesh_graph 取 MuJoCo 实际凸包顶点/面数，
+# 在随机关节姿态下计时 mj_collision 的窄相开销；同时解析官方 config_mjcf_*.json
+```
+
+结果：
+
+- **本机：没有做碰撞体简化。** 9 个碰撞 geom（2 个 base box + 7 个 mesh）直接引用原始高精度
+  STL，XML 未设置 `maxhullvert`，因此 MuJoCo 用全部顶点构建碰撞凸包。
+  实测单网格原始顶点 906–55348，凸包 124–1113 顶点；7 个碰撞 mesh 合计
+  凸包 2475 顶点 / 4918 面。碰撞凸包形状与 CAD 差异明显：`head_roll_link` 的
+  1113 顶点凸包会把头部凹结构填实，`l/r_ankle_link` 的 300+ 顶点凸包把整个脚踝外壳
+  （沿 z 向 81 mm）当作碰撞体，而不是脚底平面。凸包是 MuJoCo 对 mesh geom 的固有语义，
+  不是本机额外做的简化，但本机确实缺少“抽面/参数化代替原网格”这一层处理。
+- **官方 microduck：做了网格抽面简化，但没有多凸块凸分解。**
+  `config_mjcf_{walk,groundcontact,allcollisions}.json` 均为
+  `"simplify_stls": true, "max_stl_size": 1.0`，即 onshape-to-robot 用 pymeshlab 二次误差
+  边坍缩把每个 STL 抽到 ≤1 MB；旁证是 `assets/*.stl` 尺寸都压在 1 MB 阈值下
+  （`foot_left.stl` 996,184 B、`sole_left.stl` 789,484 B、`leg.stl` 738,884 B）。
+  没有独立 collision 网格（无 `collision/` 目录、无 `*_collision.STL`、无 `.obj` 凸块），
+  碰撞 geom 与可视 geom 引用同一份已简化 STL，也未设置 `maxhullvert`。
+  每个 part 仍是一个 mesh geom，没有拆成多个凸块，也没有 box/cylinder/sphere 原语。
+  官方真正做的是“抽面 + 按任务的碰撞 part 白名单”：`robot_walk.xml` 只有
+  2 个 `class="collision"`（左/右脚底 `sole_left`/`sole_right`）和 3 个
+  `class="self_collision_only"`（`leg`/`leg_2`/`power_support`，`contype=conaffinity=2`），
+  头壳、躯干壳、舵机、PCB 全部无碰撞体；`robot_allcollisions.xml` 则有 69 个碰撞 geom。
+  实测官方脚底碰撞网格 `sole_left` 抽面后仍有 7896 顶点、凸包 4964 顶点，是本机
+  7 个碰撞 mesh 凸包总量（2475）的两倍，说明“抽面”并不等于“小凸包”。
+- **duck_project：做了凸分解，且按 profile 分级。** `src/htdk/collision.py` 定义三代 profile：
+  `urdf_partial_v1`（原始、部分 link 无碰撞）、`convex_full_links_v2`（补齐 7 个缺碰撞的
+  link 并加脚部 shell）、`decomposed_links_v3`（CoACD 凸分解）。
+  `src/assets/collision_parts_v3/manifest.json` 记录生成器 CoACD 1.0.14、
+  `max_convex_hull=12`、`max_ch_vertex=64`、`threshold=0.001`，只覆盖 5 个 link
+  （l/r_hip_roll、l/r_calf 各 12 块启用，`head_roll_link` 12 块因“粗分解被否决”而
+  `enabled=false`，保留原保守凸包）。v2/v3 都把 16 个 mesh 的 `maxhullvert` 显式设为 48，
+  脚部用 box（`size 0.04 0.0262 0.003`）代替脚踝网格。实测 v2：19 个碰撞 geom、
+  凸包 720 顶点 / 1380 面；v3：63 个碰撞 geom、凸包 2832 顶点 / 5428 面。
+  即 v3 用更多凸块换取更贴合的凹形，代价是几何数翻三倍。
+- 窄相计时（随机关节姿态，200 次平均）：本机现状 42.7 µs、本机加 `maxhullvert=48` 为
+  36.4 µs、duck v2 为 56.1 µs、duck v3 为 69.1 µs（配置数量不同，仅作量级参考）。
+  编译期 `npoly`：本机现状 3235、加 `maxhullvert=48` 为 604。
+- 本机 200 组随机关节姿态下没有出现父子（相邻）link 自碰撞，但如果后续给
+  `l/r_calf_link`、`l/r_hip_yaw_link` 等 link 补碰撞体，需要同时补 duck_project 那样的
+  15 条相邻 link `exclude`（本机 XML 当前 0 条），否则相邻件会持续自碰撞并触发终止。
+- `make check` 退出码 0：`134 passed, 1 warning, 8 subtests passed`，13 项模型检查通过
+  （`nq=22, nv=21, nu=0`、15 关节、16 网格、3.2947 kg）。
+
+结论与后续：
+
+三处差异是**三个不同层次**，不能笼统说“做了/没做”：
+本机=原始网格+无限顶点凸包；官方=抽面 + 任务白名单 + 单一网格凸包；
+duck_project=显式 `maxhullvert=48` + CoACD 多凸块 + box 脚底。
+本机若要对齐，最小改动是给碰撞 mesh 加 `maxhullvert`（`make check` 与凸包顶点数可验证），
+更贴近 duck_project 的做法需要 CoACD 资产与相邻 link 排除表，属于新增任务范围，本轮不做。
+
+本轮未改模型、未训练、未开 GUI；探针文件已删除，`.artifacts/t042-stance/` 属 T038 的既有
+实验产物，保留不动。T042 完成，无遗留阻塞；未执行 Git 暂存、提交或推送。
+
+### 2026 年 10 月 27 日 T043
+
+用户要求把官方 microduck 训练算法中的 **PPO 与网络设计** 拉取过来，明确不要整个训练框架；
+随后要求目录名直接叫 `rsl_rl`，不要 `vendor/` 这类前缀。
+
+**关键事实：官方仓库没有 PPO 与网络的实现。** 所以源码不在
+`pollen-robotics/microduck_rl` 里，而在它依赖的 `rsl-rl-lib` 里：
+
+- 官方 `train_cli.py` 仅 1456 B，把 `main()` 转发给 `mjlab.scripts.train`；
+- PPO、ActorCritic 网络、RolloutStorage 全部来自 `rsl-rl-lib`，经 mjlab 的
+  `RslRlOnPolicyRunnerCfg` / `RslRlModelCfg` / `RslRlPpoAlgorithmCfg` 装配；
+- 官方自己写的唯一算法件是 `tasks/symmetry.py`（算法 cfg 加字段 + 镜像函数）。
+
+本机 `.venv` 装的是 `rsl-rl-lib==5.4.2`（`mjlab==1.6.0` 的依赖），与官方
+`mjlab==1.3.0` 所用 `rsl_rl` 版本一致，故直接从本地抽取，无需联网。
+
+**范围两次修正**：第一次把官方 `microduck_rl` 的 41 个框架文件（1.2 MB）整包拉进
+`vendor/microduck_rl/`，范围过宽，已删除；第二次收敛为算法闭包放到
+`vendor/rsl_rl_algorithm/`，用户要求改名；最终落在项目根 **`rsl_rl/`**，
+`vendor/` 目录已整体删除。
+
+落点：`rsl_rl/`，27 个文件 / 约 3900 行 / 256 KB，BSD-3-Clause（含 `LICENSE`），
+保留上游目录结构。核心：
+
+| 文件 | 行数 | 作用 |
+|---|---|---|
+| `algorithms/ppo.py` | 488 | PPO 主逻辑：GAE、clipped surrogate、value loss、entropy、adaptive KL、mini-batch |
+| `models/mlp_model.py` | 256 | ActorCritic 主体：obs 归一化 → MLP → 分布 / 标量 |
+| `storage/rollout_storage.py` | 357 | Rollout 存储、mini-batch 生成、GAE 回填、recurrent 序列切分 |
+| `modules/distribution.py` | 464 | Gaussian / Beta / HeteroscedasticGaussian |
+| `modules/mlp.py` | 95 | MLP 骨架与激活堆叠 |
+| `modules/normalization.py` | 131 | EmpiricalNormalization 及折扣变体 |
+| `extensions/symmetry.py` | 137 | 左右对称增强与 mirror loss |
+| `extensions/rnd.py` | 242 | 随机网络蒸馏 |
+| `env/vec_env.py` | 93 | VecEnv 抽象（PPO 的接口依赖，非环境实现） |
+| `utils/utils.py` | 389 | 激活/优化器/obs 分组解析、轨迹 padding、torch.compile 包装 |
+
+另含 `models/{cnn,rnn}_model.py`、`modules/{cnn,rnn}.py`、三个日志 writer 与各目录 `__init__.py`。
+说明写在 `rsl_rl/README.md`。上游 `algorithms/__init__.py` 原本还导出 `distillation`；
+蒸馏不在参考集内，未复制该文件。
+
+**目录同名遮蔽问题（本轮新增处理）**：`rsl_rl/` 位于项目根，Python 把当前目录排在
+`sys.path` 最前，会遮蔽已安装的 `rsl_rl` wheel；而 `mjlab.rl` 需要
+`from rsl_rl.runners import OnPolicyRunner`，本镜像不含 `runners/`，实测直接报
+`ModuleNotFoundError: No module named 'rsl_rl.runners'`。
+
+处理：新增 `rsl_rl/_fallback.py`，把已安装包的对应目录追加到各包 `__path__` 之后，
+本目录文件优先、缺失的从 wheel 补；并让 `algorithms/__init__.py` 在可用时再导出
+`Distillation`（wheel 的 `runners` 依赖它）。实现细节：
+`_installed_root()` 不能用 `startswith(项目路径)` 排除，因为 `.venv` 就在项目内，
+会把已安装包一并排除；改为只跳过本目录自身，并优先选择含 `runners/` 的候选。
+
+验证结果：
+
+- `make check` 通过（退出码 0）：`134 passed, 1 warning, 8 subtests passed`，
+  模型编译与关节映射检查通过。
+- `import mjlab.rl` 与 `mjlab.rl.runner.MjlabOnPolicyRunner` 均可正常导入
+  （遮蔽问题已解除）。
+- 本地 `PPO` / `MLPModel` / `RolloutStorage` / `GaussianDistribution` /
+  `EmpiricalNormalization` 全部可导入，且 `PPO.__file__` 确认指向 `rsl_rl/algorithms/ppo.py`，
+  即本目录优先而非 wheel。
+- 端到端冒烟：8 环境 / 12 维观测 / 4 维动作的合成 `VecEnv`，按真实 API
+  `PPO.construct_algorithm(obs, env, cfg, device)` → `act` → `process_env_step` →
+  `compute_returns` → `update()` 跑 8 次迭代，entropy 单调下降 5.670 → 5.604，
+  证明策略在真实更新而非死代码。
+
+实测 API 细节（与直觉不同，供后续实现参考）：`update()` 无参且返回
+`dict[str, float]`；`compute_returns(obs)` 无返回值；构造必须走 `construct_algorithm`；
+cfg 需含 `multi_gpu`、`obs_groups`、`num_steps_per_env` 等键。
+
+`rsl_rl/` 已在 `pyproject.toml` 的 `[tool.ruff]` 中以 `extend-exclude` + `force-exclude`
+排除（`make lint` 本来就只检查 `src tools tests`，此举显式固化边界）；已验证
+`src tools tests` 仍正常检查、`rsl_rl/` 被跳过。
+
+未解决项与边界：
+
+- 官方 14 关节 / XL330，本机 15 关节 / 12 无刷 + 3 舵机；网络输入维度与对称性索引表
+  需按本机观测维度重定，不能照抄。
+- 官方 `mjlab==1.3.0` 与本机 `1.6.0` 的 `RslRl*` 配置接口未做行为等价性验证。
+- 目录同名遮蔽虽已用 `_fallback.py` 处理，但属项目根放第三方同名包的固有风险；
+  后续若在项目内引入 `rsl_rl` 其他子模块，需确认优先级仍符合预期。
+- 按项目约定，生产实现写在 `src/ht_microduck/`，本目录仅作只读参考，不直接作为依赖。
+
+本轮未改模型、未训练、未开 GUI、未安装依赖。`rsl_rl/` 与 `pyproject.toml` 的改动
+待用户确认后再决定是否提交；未执行 Git 暂存、提交或推送。
+
+### 2026 年 10 月 27 日 T038
+
+完成 HOME 站姿标定，`HOME_FRAME` 由全零改为脚底水平的蹲姿。
+
+改动文件：
+
+- `src/ht_microduck/robots/ht_microduck/ht_microduck_constants.py`：新增 `HOME_JOINT_POS`
+  （`hip_roll ±0.0873` 镜像、`hip_pitch 0.85`、`calf −1.20`、`ankle 0.35` 双腿同号），
+  `HOME_FRAME.pos` 由 `0.171` 改为 `0.1534`，并记录否定用户两个给定角度的实测依据。
+- `tests/test_robot_entity.py`：三处 HOME 断言同步；脚底余隙区间由 `3.8–3.9 mm`
+  改为 `−1.5–0 mm`（蹲姿的最低点是脚跟圆弧，不是支撑面）；触地下压量由 `5 mm` 改为 `8 mm`。
+- `tools/check_robot_scene.py`：根高守卫由绝对 `0.15 m` 改为 `0.9 × HOME`，
+  否则更低的蹲姿会让守卫恒通过或误报。
+- `README.md`：HOME 段改为蹲姿说明，并写清两个用户给定角度不能采用的原因。
+
+验证命令与结果：
+
+- `make check`：`All checks passed!`、`134 passed, 1 warning, 8 subtests passed`。
+- `uv run --no-sync python -B tools/check_robot_scene.py --device cuda:0`：
+  `root_height=[0.149827, 0.149834] m`、`peak_effort=0.532 Nm`、`peak_joint_speed=0.841 rad/s`，双足接地。
+- 5 s 零动作保持 8 种子 × 16 环境：`falls=0/128`，末端倾角 7.8–9.4°。
+- 协调速度脉冲 `0.10–0.26 rad`：新 HOME 全 `0/24`，旧零位在 `0.26 rad` 为 `2/24`。
+
+用户提出的 `hip_roll 0.38` / `hip_pitch 1.57` 未采用，理由已写入常量和 README：
+`1.57` 是关节限位且使脚底法线倾角达 88°，48/48 全倒；`0.38` 把脚底翘起约 17°，
+横向余量从 92 mm 降到 57 mm，平地只需镜像内收 `0.0873`。
+
+本轮还纠正了两个方法论错误，后续探针必须沿用：
+每个候选姿势要按自身几何高度复位，不能统一从 `0.171 m` 放下（否则把落地冲击记成不稳）；
+脚底倾角要在真正水平的姿态标定一次法线再随踝链旋转，不能对带曲面的整脚网格直接做平面拟合。
+
+未解决项：
+
+- 默认增益未改（`kp=10`/`kd=0.4`），增益与 HOME 的联合整定未做，归 T023/M1。
+- 接触面积未直接测量：mjlab 1.6 的 `sim.data.contact` 无 `geom1`/`geom2`，设备侧无法按 geom 归并；
+  本轮用 CPU 顶点几何替代并注明不等价。
+- 实机增益、限幅、延迟与供电仍是仿真假设，归 T030。
+
+下一项为 T022（固定首版任务控制与观测契约），随后 T023（最小平地速度任务）。
+本轮未训练、未开 GUI、未安装依赖；未执行 Git 暂存、提交或推送，`vendor/` 与 `pyproject.toml`
+的既有改动保持原样。
+
+### 2026 年 10 月 27 日 VS Code Codex 面板无法打开修复
+
+现象：VS Code 内 Codex 侧栏显示 `Codex could not start its user interface.`，
+扩展日志 `~/.config/Code/logs/<会话>/window<N>/exthost/openai.chatgpt/Codex.log` 记录
+`Webview renderer did not become ready ... reason=renderer_ready_timeout
+receivedWebviewMessage=false timeoutMs=30000`，且没有任何 `React root render` 行。
+
+定位结论（本地已验证）：两个独立缺陷叠加，只修任一个都不够。
+
+1. GPU 进程崩溃是主因。`~/.config/Code/Crashpad/` 的 dump 记录
+   `FATAL:content/browser/gpu/gpu_data_manager_impl_private.cc:417] GPU process isn't usable. Goodbye.`，
+   同会话 `main.log` 出现 `CodeWindow: detected unresponsive` 与 `Extension host ... exited`。
+   该机 Xorg 只有 `swrast`（`AIGLX: Screen 0 is not DRI2 capable`、
+   `Initialized DRISWRAST GL provider`），Electron 拿不到可用的 GL 后端，GPU 进程反复失败，
+   Codex 侧栏的 webview 渲染进程因此根本没被创建——表现为日志里连 `React root render` 都没有。
+   同期 Claude Code 的 webview 在同一 VS Code 里正常收发消息，说明 webview 基础设施本身没坏。
+2. 30 s 超时预算过紧。扩展 `out/extension.js` 把等待 webview 上报 `renderer_ready` 的定时器
+   硬编码为 30 s（`setTimeout(..., 3e4)`），超时后替换 `webview.html` 并弹错误。
+   实测 `[startup][renderer] app routes mounted after` 为
+   `15584/19471/32636/38603/42988/50090 ms`，正常挂载也常超过 30 s。
+   30 s 无设置项可调，也无法靠重装规避：市场最新 linux-x64 为 `26.51021.22027`，
+   本机已装 `26.1021.22027`，市场无更新版本。
+
+修改：
+- `~/.vscode/argv.json`：打开 `"disable-hardware-acceleration": true`（原为注释），
+  让 Electron 走软件渲染，绕开本机不可用的 GL；备份为 `argv.json.dsh-backup`。
+- `~/.vscode/extensions/openai.chatgpt-<版本>-linux-x64/out/extension.js`：把该定时器
+  由 `3e4` 改为 `18e4`（30 s → 180 s），原文备份为 `extension.js.dsh-backup`。
+  `~/.local/share/codex-webview-fix/reapply.sh` 保存可重复执行的补丁脚本（幂等，
+  带 `node --check` 校验），扩展升级后可重跑。
+
+验证：
+- 只打超时补丁时仍打不开：新会话 `165600` 的三个窗口都没有任何 `React root render` 行，
+  证实超时预算不是充分条件。
+- 补上软件渲染并完整重启后，真实会话 `20261027T170157/window1` 出现
+  `React root render requested windowType=extension`、`authenticatedAccountPresent=true`、
+  `app routes mounted after 50090ms`、`[git-repo-watcher] Starting`、`result=succeeded`，
+  `detected unresponsive` 为 0，17:00 后无新 crash dump。
+  该 50090 ms 挂载时间也说明 30 s 预算必然失败，两项修改互补。
+- 隔离实例加 `--disable-gpu` 复核：`app routes mounted after 15584ms`。
+- `node --check extension.js` 通过，`argv.json` 去注释后仍是合法 JSON；不改动仓库代码，
+  未运行 `make check`。
+
+遗留：
+- 两处补丁都在用户级配置/扩展目录，不随仓库版本管理；扩展更新后需再次执行
+  `bash ~/.local/share/codex-webview-fix/reapply.sh`，`argv.json` 一般仍保留。
+- 软件渲染只是绕开 GPU 缺陷，没修好显卡驱动本身：该机 `nvidia-smi` 可用但 Xorg 未绑定
+  NVIDIA（`/dev/dri` 存在却仍走 `fbdev`/`swrast`）。若要恢复硬件加速，需另查 Xorg 驱动加载。
+- 本次为临时修复，`make check` 与仓库产物均未变更；未执行 Git 暂存、提交或推送。
+
+### 2026 年 10 月 27 日 T022–T026 任务环境与本地训练链路
+
+按用户要求"参考官方的项目做任务环境（任务/行动/奖励），无 PPO、网络、存储、Runner"落地首版：
+先冻结契约，再做平地速度环境，最后接上本地的网络、Storage、PPO 与 Runner。
+参考 pollen-robotics/microduck_rl 的 `Mjlab-Velocity-Flat-MicroDuck`
+（`develop@b02fdea`，Apache-2.0 代码 / 网格为 CC BY-NC-SA 4.0），
+用 `curl` 读取固定提交的原始文件与 PyPI 上 `mjlab==1.3.0` 的基类配置；
+上游与本机 `mjlab==1.6.0` 的差异逐条核对后再改，不整体搬运。
+
+新增文件：
+
+- `src/ht_microduck/tasks/common/contract.py`：冻结的时序、动作子集/顺序/缩放、
+  actor 39 维与 critic 42 维观测，导入时 `validate_contract()` 强制 `base_lin_vel` 只在 critic。
+- `src/ht_microduck/tasks/common/mdp.py`：速度跟踪、腾空时间、足端间隙/滑移、
+  机体触地、自碰撞、`upright`、`state_is_nan`。
+- `src/ht_microduck/tasks/flat_velocity/`：`make_flat_velocity_env_cfg()`，11 项奖励、4 项终止、
+  7 个事件（含必需的 `htdw3532_init`/`bam_init`）。
+- `src/ht_microduck/algorithms/`：`networks.py`、`storage.py`、`ppo.py`、`runner.py`。
+- `src/ht_microduck/cli/train.py` 与 `pyproject.toml` 的 `[project.scripts]`（`duck-train`）。
+- `tools/check_task_contract.py`、`tools/check_velocity_env.py`。
+- `tests/test_networks.py`（17）、`tests/test_ppo.py`（12）、`tests/test_runner.py`（9）。
+
+实测结果：
+
+```
+uv run --no-sync python -B tools/check_task_contract.py --device cuda:0
+  Contract check passed: device=cuda:0, envs=4, actor=39D, action=10D, control=50Hz.
+
+uv run --no-sync python -B tools/check_velocity_env.py --device cuda:0
+  Velocity env check passed: device=cuda:0, envs=16, steps=300, dt=0.02s.
+
+uv run --no-sync duck-train --num-envs 16 --iterations 2 --seed 0 --device cpu
+  iter 1 reward -0.063 value_loss 0.1169 kl +0.39855 lr 6.67e-04
+  iter 2 reward -0.067 value_loss 0.0544 kl +0.10128 lr 4.44e-04
+  恢复同一 checkpoint 后 iter 5/6 继续，迭代号、优化器与归一化统计均接上。
+
+make check
+  All checks passed!  172 passed, 1 warning, 8 subtests passed
+```
+
+本轮修掉的真实缺陷（都由检查或测试发现，不是推测）：
+
+1. `GaussianDistribution` 的 `log_std` 形状为 `(A,)`，与 `(N,A)` 均值广播后
+   `clamp` 保留参数形状，导致 `entropy()`/`log_prob()` 的 `sum(-1)` 连 batch 维一起压掉。
+   已在构造时 `expand_as(mean)`。
+2. PPO 缺少小批量优势归一化，首个 iteration `approx_kl=2.99`、`clip_fraction=0.90`；
+   加入归一化并对零方差批次加保护后降到 `1.02` 且逐轮收敛。
+3. Runner 从未调用 `RunningMeanStd.update()`，归一化器一直停在均值 0/方差 1；
+   现在每个 rollout 后更新，统计随 checkpoint 持久化（`count=768` 可复查）。
+4. 契约检查里"只改线速度、断言 actor 不变"不成立（重推物理会扰动其它项），
+   改为结构断言；动作脉冲判据从"位置"改为"指令目标"，并把编码器偏置计入期望值。
+
+遗留与边界：
+
+- 零动作保持 2/16 终止是 DR 的预期代价，T038 的 0/128 是无 DR 的干净保持；
+  6×16 重复累计 1/96，检查据此改为"不超过 1/4"并把实测值打印出来。
+- 三次 GPU 短跑撞上并发进程常驻 7.1/8.0 GiB 显存，训练验证最终在 CPU 上完成；
+  GPU 上只跑通了两个环境检查工具，GPU 训练证据留到 T027 补。
+- `feet_clearance`/`foot_slip` 的足端世界系高度与速度口径需在导出前与 `duck_project` 对齐一次。
+- 短跑只证明链路通与数值有限，**不证明学会行走**；奖励均值仍为负、episode 长度 20–30 步。
+- 本轮未执行 Git 暂存、提交或推送；`rsl_rl/` 与 `pyproject.toml` 的并发改动保持原样。
+
+### 2026 年 10 月 27 日 T027 训练输出与回放对齐官方
+
+用户要求"把训练输出、回放之类的尽量都对齐官方"。官方指 pollen-robotics/microduck_rl 所用的
+mjlab + RSL-RL 栈；本机该栈的控制台格式在 `rsl_rl/utils/logger.py`（rsl_rl_lib 5.4.2，
+`232–275` 行），日志布局在 `mjlab/scripts/train.py:188–200`，回放在 `mjlab/scripts/play.py`。
+本轮只对齐**输出格式与入口形态**，算法仍是本仓库自己的 PPO/Runner（见 AGENTS.md 的技术方向）。
+
+新增与修改：
+
+- `src/ht_microduck/algorithms/logger.py`：`TrainingLogger` 复刻官方 80 列面板
+  （`#` 横幅、居中 `Learning iteration i/total`、`Total steps`、`Steps per second`、
+  `Collection time`、`Learning time`、`Mean <key> loss`、`Mean reward`、
+  `Mean episode length`、`Mean action std`、`Iteration time`、`Time elapsed`、`ETA`），
+  同时写 TensorBoard 事件与原有 `metrics.jsonl`；episode 统计用官方口径的最近 100 条窗口。
+- `src/ht_microduck/algorithms/runner.py`：`train_step()` 分别记录 `collect_s` 与 `learn_s`
+  （官方 `Collection time`/`Learning time` 是两个独立字段），新增 `action_std` 属性，
+  `collect()` 额外暴露本轮完成的 episode；`TrainCfg` 增加 `experiment_name`/`run_name`。
+  `TrainCfg` 只增字段，旧 checkpoint 仍可加载。
+- `src/ht_microduck/cli/train.py`：默认写到
+  `runs/<experiment_name>/<YYYY-mm-dd_HH-MM-SS>_<run_name>/`，内含 `params/env.yaml`、
+  `params/agent.yaml`、`metrics.jsonl`、`model_<iteration>.pt`、`model_last.pt`；
+  新增 `--log-root`、`--experiment-name`、`--run-name`、`--logger {tensorboard,none}`；
+  `--out-dir` 仍表示扁平目录，供既有记录复现。
+- `src/ht_microduck/cli/play.py`（新）与 `pyproject.toml` 的 `duck-play` 入口：按 `PlayConfig`
+  提供 `--checkpoint-file`、`--agent {trained,zero,random}`、`--num-envs`、`--device`、
+  `--viewer {auto,native,viser}`、`--no-terminations`、`--video`、`--video-length`，
+  缺参数时按官方口径回退到最新 `model_*.pt`。
+- `tests/test_logger_and_play.py`（14 条）、`docs/design/training_output_and_play.md`。
+
+实测结果：
+
+```
+uv run --no-sync duck-train --num-envs 16 --iterations 3 --device cpu --num-steps-per-env 8 \
+  --out-dir .artifacts/t027/fmt --log-interval 1
+  ################################################################################
+                               Learning iteration 2/3
+                              Total steps: 256
+                         Steps per second: 189
+                          Collection time: 0.632s
+                            Learning time: 0.044s
+                         Mean policy loss: -0.0775
+                          Mean value loss: 0.0057
+                        Mean entropy loss: 14.1783
+                          Mean action std: 1.00
+                            Learning rate: 4.44e-04
+  --------------------------------------------------------------------------------
+                           Iteration time: 0.68s
+                             Time elapsed: 0:00:02
+                                      ETA: 0:00:00
+```
+
+（终端里横幅与迭代标题为彩色加粗，此处去掉了 ANSI 转义。）
+
+```
+uv run --no-sync duck-train --num-envs 8 --iterations 2 --device cpu --num-steps-per-env 4 \
+  --log-root .artifacts/t027/logs --run-name smoke --save-interval 1
+  [INFO] Training with: device=cpu, seed=0
+  [INFO] Logging experiment in directory: .artifacts/t027/logs/flat_velocity/2026-10-27_21-19-27_smoke
+  → params/{env,agent}.yaml、metrics.jsonl、model_1.pt、model_2.pt、model_last.pt
+
+uv run --no-sync duck-play --checkpoint-file runs/flat_velocity/checkpoint_1000.pt \
+  --num-envs 1 --device cuda:0 --viewer native --nconmax 64 --njmax 256
+  [INFO] Loaded runs/flat_velocity/checkpoint_1000.pt at iteration 1000
+  → 窗口 "MuJoCo : mjlab scene" 1280x720 实际渲染，持续运行至 180 s 超时退出（exit 124）
+
+uv run --no-sync duck-play --agent zero --num-envs 1 --device cuda:0 --viewer viser
+  ╭────── viser (listening *:8080) ───────╮  HTTP http://localhost:8080
+
+uv run --no-sync duck-play --checkpoint-file ... --video --video-length 5
+  [INFO] Saved video to .artifacts/t027/vid/duck-play-step-0.mp4   （8021 字节）
+  trained/zero/random 三种策略分别产出 8021 / 7733 / 9147 字节，内容不同
+
+uv run --no-sync duck-train --resume .../model_2.pt
+  [INFO] Resumed from .../model_2.pt at iteration 2
+  Learning iteration 3/4 … 4/4      （迭代号与 ETA 均接上，不回到 1/2）
+
+make check / pytest tests
+  All checks passed!   192 passed, 1 warning, 8 subtests passed
+```
+
+本轮修掉的问题：
+
+1. `--video` 起初只打印 "Video written"，实际没有 mp4：`VideoRecorder` 只在
+   `render_mode == "rgb_array"` 时取帧，而 `build_env` 没有传该参数。现在显式传入，
+   并实测生成文件。
+2. 视频默认位置一度写到 `runs/flat_velocity/videos`（用户的实验目录）。按官方 `play.py`
+   改为 `<checkpoint 目录>/videos/play`，并加 `--videos-dir` 覆盖；误建的空目录已删除。
+3. `--resume` 后表头显示 `3/2`：`total_iterations` 没有加起始迭代号，ETA 也按 0 起算。
+   改为 `start_iteration + num_iterations` 并在 logger 里扣减，实测恢复后显示 `3/4`、`4/4`。
+
+与官方的已知差异（有意保留）：
+
+- 官方 `log_interval` 概念不存在，每轮都打印；这里保留 `--log-interval`（默认 1，即每轮打印）。
+- 官方用 wandb/tensorboard 二选一，默认 wandb；这里默认 tensorboard（本机无 wandb 登录），
+  且始终写 `metrics.jsonl` 供后续评估与绘图读取。
+- 官方 `params/agent.yaml` 记录 RSL-RL 的完整 `train_cfg`；这里记录本仓库的
+  `actor`/`critic`/`ppo` 数据类，字段名不同但同样是"恢复所需的最小集合"。
+
+遗留与边界（T027 仍为进行中，未全部验收）：
+
+- 本轮完成的是 T027 中的**恢复与回放**两项；T027 的验收还要求
+  `duck-eval` 与固定种子评估报告（覆盖零速、前后、侧移、转向，报告跟踪误差、跌倒率、
+  episode 长度与限幅统计），这部分本轮未做，任务状态保持"进行中"。
+- 回放只做了"能加载、能跑、能出画面/视频"，**未评估步态质量**；所用 checkpoint 取自仍在
+  进行的 2 万轮训练（第 1000 轮），当时 episode 长度已满 1000 步但尚未验证速度跟踪误差。
+- 本轮未执行 Git 暂存、提交或推送。

@@ -5,20 +5,24 @@ import numpy as np
 import pytest
 from mjlab.entity import Entity, EntityCfg
 from mjlab.scene import Scene, SceneCfg
+from mjlab.sim import MujocoCfg
 from mjlab.terrains import TerrainEntityCfg
 
 from ht_microduck.robots import HT_MICRODUCK_ROBOT_CFG, get_ht_microduck_robot_cfg
 from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
     BRUSHLESS_ACTUATOR_CFG,
+    BRUSHLESS_ARMATURE,
     COLLISION_GEOM_NAMES,
     FOOT_SITE_NAMES,
     FULL_COLLISION,
     HOME_FRAME,
+    HOME_JOINT_POS,
     JOINT_NAMES,
     MJCF_PATH,
     SERVO_ACTUATOR_CFG,
     get_robot_spec,
     get_spec,
+    make_preview,
 )
 
 
@@ -145,7 +149,7 @@ def test_task_can_edit_its_robot_config_before_compilation():
     np.testing.assert_allclose(model.actuator_biasprm[:12, 2], -0.1)
     assert not model.actuator_ctrllimited[:12].any()
     np.testing.assert_allclose(model.actuator_forcerange[:12], [[-0.35, 0.35]] * 12)
-    assert HOME_FRAME.pos == (0.0, 0.0, 0.171)
+    assert HOME_FRAME.pos == (0.0, 0.0, 0.1534)
     assert HOME_FRAME.joint_pos["mouth_joint"] == 0.0
     assert BRUSHLESS_ACTUATOR_CFG.stiffness == 10.0
     assert HT_MICRODUCK_ROBOT_CFG.articulation.soft_joint_pos_limit_factor == 1.0
@@ -176,7 +180,7 @@ def test_source_xml_is_robot_only(scene_model):
     assert source.nlight == 0
     planes = np.flatnonzero(source.geom_type == mujoco.mjtGeom.mjGEOM_PLANE)
     assert len(planes) == 0
-    assert source.qpos0[2] == pytest.approx(0.171)
+    assert source.qpos0[2] == pytest.approx(0.171)  # XML default, not HOME
     # The source XML carries no geom names; get_robot_spec() assigns them.
     active_robot_geoms = np.flatnonzero(
         (source.geom_bodyid != 0)
@@ -263,7 +267,7 @@ def test_neutral_reset_has_valid_joint_limits_and_zero_velocities(robot_model):
     assert cfg.articulation.soft_joint_pos_limit_factor == 1.0
     assert set(cfg.init_state.joint_pos) == set(JOINT_NAMES)
     assert set(cfg.init_state.joint_vel) == set(JOINT_NAMES)
-    np.testing.assert_allclose(data.qpos[:7], [0.0, 0.0, 0.171, 1.0, 0.0, 0.0, 0.0])
+    np.testing.assert_allclose(data.qpos[:7], [0.0, 0.0, 0.1534, 1.0, 0.0, 0.0, 0.0])
     np.testing.assert_array_equal(data.qvel, 0.0)
     for name in JOINT_NAMES:
         joint = model.joint(name)
@@ -372,7 +376,10 @@ def test_plane_scene_has_one_ground_and_collision_free_neutral_pose(scene_model)
         sole = _sole_surface_vertices(model, gid)
         body_pos = data.xpos[model.body(f"robot/{side}_ankle_link").id]
         clearance = sole[:, 2].min() + body_pos[2]
-        assert 0.0038 < clearance < 0.0039
+        # HOME rests just above the plane: the largest support face sits ~1.4 mm
+        # below the plane while the lowest mesh point (a heel arc) floats ~0.4 mm
+        # above it, so both feet touch with no initial penetration of the plane.
+        assert -0.0015 < clearance < 0.0
         assert data.site_xpos[model.site(f"robot/{side}_foot").id, 2] > clearance
         body_x = body_pos[0]
         sole_x_bounds.append(sole[:, 0].min() + body_x)
@@ -387,7 +394,9 @@ def test_both_feet_and_other_source_geoms_can_contact_scene_ground(scene_model):
     ground = model.geom("terrain").id
     # Pure collision queries at constructed heights; no dynamics or standing
     # claim. First touch both feet, then expose the other collision geoms.
-    data.qpos[2] -= 0.005
+    # HOME clears the plane by ~3.8 mm measured on the sole support face, but the
+    # lowest mesh point is the heel arc, so step down past both to guarantee contact.
+    data.qpos[2] -= 0.008
     mujoco.mj_forward(model, data)
     contacting_names = {
         model.geom(int(g)).name
@@ -409,3 +418,94 @@ def test_both_feet_and_other_source_geoms_can_contact_scene_ground(scene_model):
     assert "robot/base_rear_collision" in contacting_names
     assert "robot/r_hip_roll_collision" in contacting_names
     assert "robot/l_hip_roll_collision" in contacting_names
+
+
+def test_preview_starts_from_the_init_state_keyframe():
+    """The old preview let MuJoCo build MjData, so init_state was never applied."""
+    model, data = make_preview()
+    key_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "init_state")
+    assert key_id >= 0
+    np.testing.assert_allclose(data.qpos, model.key(key_id).qpos, atol=1e-9)
+    assert data.qpos[2] == pytest.approx(HOME_FRAME.pos[2])
+    # Root height alone would also match the XML default pose; the joints are
+    # the part that was invisible, since the default keeps every joint at zero.
+    assert not np.allclose(data.qpos[7:], 0.0)
+    # ctrl is an affine-PD input here, so it must be kp * q_target, not
+    # q_target and not zero. The keyframe stores plain joint targets, so the
+    # preview has to scale them by the compiled gain.
+    np.testing.assert_allclose(
+        data.ctrl, -model.actuator_biasprm[:, 1] * np.asarray(model.key(key_id).ctrl)
+    )
+    for actuator_id in range(model.nu):
+        name = (model.actuator(actuator_id).name or "").removeprefix("robot/")
+        stiffness = -float(model.actuator_biasprm[actuator_id, 1])
+        assert data.ctrl[actuator_id] == pytest.approx(
+            stiffness * HOME_JOINT_POS[name], abs=1e-9
+        )
+
+
+def test_preview_adds_one_ground_and_light_without_touching_the_robot_xml():
+    """The reference entry points preview a bare entity; this one supplies ground."""
+    model, _ = make_preview()
+    planes = np.flatnonzero(model.geom_type == mujoco.mjtGeom.mjGEOM_PLANE)
+    assert [model.geom(int(g)).name for g in planes] == ["terrain"]
+    assert model.geom("terrain").friction[0] == pytest.approx(1.0)
+    assert model.nlight == 1
+    assert model.ntex == 1 and model.nmat == 1
+    assert model.nu == 15
+    # The robot XML must stay floor- and light-free (T016/T039).
+    source = get_spec().compile()
+    assert source.nlight == 0
+    assert not (source.geom_type == mujoco.mjtGeom.mjGEOM_PLANE).any()
+
+
+def test_preview_uses_the_training_integrator_and_holds_the_stance():
+    """Explicit Euler makes the brushless damping unstable and the robot judders."""
+    reference = mujoco.MjModel.from_xml_string("<mujoco><worldbody/></mujoco>")
+    MujocoCfg().apply(reference)
+    model, data = make_preview()
+    assert model.opt.integrator == reference.opt.integrator
+    assert model.opt.integrator != mujoco.mjtIntegrator.mjINT_EULER
+
+    for _ in range(1000):
+        mujoco.mj_step(model, data)
+    # Juddering sits at ~25 rad/s indefinitely; a settled robot is ~0.3 rad/s.
+    assert np.abs(data.qvel).max() < 2.0
+    assert data.qpos[2] > 0.1
+
+
+def test_brushless_joints_carry_reflected_rotor_inertia_and_stop_buzzing():
+    """Without armature the PD damping buzzes at ~6 Hz instead of holding still.
+
+    This is a timestep-dependent numerical artefact, not real motion: halving
+    ``dt`` halves the buzz, and adding the HTDW-3532 armature cuts the mean joint
+    speed by ~29x. Locking both the value and the resulting behaviour keeps a
+    future edit from silently dropping the armature or the integrator.
+    """
+    model, data = make_preview()
+    leg_dofs = [
+        int(model.jnt_dofadr[model.actuator_trnid[i, 0]])
+        for i in range(model.nu)
+        if -model.actuator_biasprm[i, 1] > 0  # brushless: affine position bias
+    ]
+    assert len(leg_dofs) == 12
+    assert all(
+        model.dof_armature[dof] == pytest.approx(BRUSHLESS_ARMATURE) for dof in leg_dofs
+    )
+    # The user-supplied joint-side value, kept with all its digits.
+    assert BRUSHLESS_ARMATURE == pytest.approx(0.0069753532276)
+
+    # Let the stance settle, then measure the residual motion over 3 s.
+    for _ in range(2500):
+        mujoco.mj_step(model, data)
+    leg_qvel = np.abs(data.qvel[1:]).mean()  # skip the 6 free-joint DOFs
+    speeds = []
+    for _ in range(1500):
+        mujoco.mj_step(model, data)
+        speeds.append(np.abs(data.qvel[1:]).mean())
+    # Measured 0.0037 rad/s with the real armature; 0.0249 with the 0.002
+    # placeholder; 0.105 without any armature.
+    assert np.mean(speeds) < 0.01, f"joints are buzzing: {np.mean(speeds):.4f} rad/s"
+    assert leg_qvel < 0.05
+    # Buzzing must not cost the stance.
+    assert data.qpos[2] > 0.14

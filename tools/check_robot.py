@@ -9,8 +9,8 @@ from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
     JOINT_NAMES,
     JOINT_TO_MOTOR_MODEL,
     MJCF_PATH,
-    get_ht_microduck_robot_cfg,
     get_spec,
+    make_preview,
 )
 
 
@@ -75,23 +75,13 @@ def main() -> None:
         print("原始 MJCF 保持被动；整机工厂另行接入无刷 PD 与 HD1910 BAM。")
 
     if args.viewer:
-        from mjlab.scene import Scene, SceneCfg
-        from mjlab.terrains import TerrainEntityCfg
         from mujoco import viewer as mj_viewer
 
-        # Same preview as the official constants module: an mjlab Scene adds the
-        # ground plane and sun, so the robot-only XML stays the training asset.
-        scene = Scene(
-            SceneCfg(
-                terrain=TerrainEntityCfg(terrain_type="plane"),
-                entities={"robot": get_ht_microduck_robot_cfg()},
-            ),
-            device="cuda:0",
-        )
-        scene_model = scene.compile()
-        data = mujoco.MjData(scene_model)
-        mujoco.mj_forward(scene_model, data)
-        with mj_viewer.launch_passive(scene_model, data) as viewer:
+        # Same preview as the constants module, including the training
+        # integrator and the HOME stance, instead of a duplicated copy that
+        # silently previewed different physics.
+        preview_model, preview_data = make_preview()
+        with mj_viewer.launch_passive(preview_model, preview_data) as viewer:
             while viewer.is_running():
                 viewer.sync()
                 time.sleep(1.0 / 60.0)

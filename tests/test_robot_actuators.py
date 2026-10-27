@@ -16,6 +16,7 @@ from ht_microduck.actuators.HD_1910_C001.model import load_hd1910_parameters
 from ht_microduck.actuators.HTDW_3532_02_DNE.nt_actuator import HTDW3532ActuatorCfg
 from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
     BRUSHLESS_ACTUATOR_CFG,
+    BRUSHLESS_ARMATURE,
     BRUSHLESS_JOINT_NAMES,
     BRUSHLESS_MJCF_EFFORT_LIMIT,
     JOINT_NAMES,
@@ -64,7 +65,7 @@ def test_configs_cover_each_hinge_once_in_source_order():
         if joint.type == mujoco.mjtJoint.mjJNT_HINGE
     )
     assert targets == source_order
-    assert brushless.armature is None
+    assert brushless.armature == pytest.approx(BRUSHLESS_ARMATURE)
     assert brushless.frictionloss is None
     assert brushless.viscous_damping is None
     assert 0 < brushless.effort_limit <= BRUSHLESS_MJCF_EFFORT_LIMIT
@@ -102,7 +103,10 @@ def test_entity_compiles_all_fifteen_actuators_and_preserves_brushless_xml(
             [-BRUSHLESS_MJCF_EFFORT_LIMIT, BRUSHLESS_MJCF_EFFORT_LIMIT],
         )
         assert model.dof_damping[dof] == pytest.approx(0.02)
-        assert model.dof_armature[dof] == pytest.approx(0.0)
+        # Reflected rotor inertia from the actuator cfg, not the XML: without it
+        # the PD damping term is integrated against almost no inertia and the
+        # legs buzz at ~6 Hz instead of holding HOME.
+        assert model.dof_armature[dof] == pytest.approx(BRUSHLESS_ARMATURE)
         assert model.dof_frictionloss[dof] == pytest.approx(0.0)
 
 
