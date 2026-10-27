@@ -1,0 +1,28 @@
+# Python 环境、字节码与构建产物
+/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/
+
+# 检查、仿真与编译缓存；专项检查统一写入 .artifacts/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+/.cache/
+/.warp_cache/
+/.torchinductor_cache/
+/.artifacts/
+/MUJOCO_LOG.TXT
+
+# 根目录的训练、评估及导出产物；源码与测试中的同名目录保留
+/outputs/
+/logs/
+/runs/
+/wandb/
+/checkpoints/
+/exports/
+/videos/
+
+# tests/、docs/、模型资源与 uv.lock 均纳入版本控制

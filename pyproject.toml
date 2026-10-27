@@ -1,0 +1,125 @@
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[project]
+name = "ht-microduck"
+version = "0.1.0"
+description = "Custom reinforcement learning and mixed-actuator simulation with mjlab"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mjlab==1.6.0",
+    "mujoco~=3.11.0",
+    "mujoco-warp~=3.11.0",
+    "numpy>=1.26.0",
+    "tensorboard>=2.20.0",
+    "torch>=2.7.0,<3.0.0",
+    "tqdm>=4.67.0",
+    "tyro>=1.0.1",
+    "warp-lang>=1.14.0",
+]
+# mjlab brings RSL-RL as a transitive dependency. The project's PPO, networks,
+# storage, runner, and training entry point will live in ht_microduck.
+
+[project.optional-dependencies]
+cpu = ["torch>=2.7.0,<3.0.0"]
+cu118 = ["torch>=2.7.0,<3.0.0"]
+cu126 = ["torch>=2.7.0,<3.0.0"]
+cu128 = ["torch>=2.7.0,<3.0.0"]
+cu129 = ["torch>=2.7.0,<3.0.0"]
+cu130 = ["torch>=2.7.0,<3.0.0"]
+export = [
+    "onnx>=1.18.0",
+    "onnxruntime>=1.19.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.11.0",
+]
+
+# Enable these entry points once the corresponding CLI main() functions exist.
+# [project.scripts]
+# duck-train = "ht_microduck.cli.train:main"
+# duck-play = "ht_microduck.cli.play:main"
+# duck-eval = "ht_microduck.cli.evaluate:main"
+# duck-export = "ht_microduck.cli.export:main"
+
+[tool.uv]
+# The initial training environment targets Linux x86_64 with an NVIDIA GPU.
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# Each environment uses one PyTorch backend; uv locks all choices together.
+conflicts = [
+    [
+        { extra = "cpu" },
+        { extra = "cu118" },
+        { extra = "cu126" },
+        { extra = "cu128" },
+        { extra = "cu129" },
+        { extra = "cu130" },
+    ],
+]
+
+[[tool.uv.index]]
+name = "pypi"
+# Use a PyPI mirror for general dependencies; torch and Warp use explicit indexes.
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com/"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu118", extra = "cu118" },
+    { index = "pytorch-cu126", extra = "cu126" },
+    { index = "pytorch-cu128", extra = "cu128" },
+    { index = "pytorch-cu129", extra = "cu129" },
+    { index = "pytorch-cu130", extra = "cu130" },
+]
+warp-lang = { index = "nvidia" }
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

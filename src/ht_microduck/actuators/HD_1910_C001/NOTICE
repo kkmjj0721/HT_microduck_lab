@@ -1,0 +1,37 @@
+HD1910 BAM actuator adaptation
+
+Source: https://github.com/ftservo/ftservo-bam
+Pinned revision: 4f7c0b0de3debf9c1ab254fc9654676e8aab9317
+Upstream license: Apache License, Version 2.0 (see THIRD_PARTY_LICENSE).
+
+Portions of model.py and bam_actuator.py are adapted from:
+- bam/actuator.py (VoltageControlledActuator control and torque equations)
+- bam/feetech/actuator.py (HD1910 controller defaults)
+- bam/model.py (M6 scalar dry-friction equation, vectorized locally)
+- bam/mjlab.py (vectorized friction integration design)
+
+Upstream copyright notices:
+Copyright 2025 Marc Duclusaud & Grégoire Passault
+Copyright 2026 ftservo
+
+Local modifications:
+- Extract only the HD1910 M6 equations into pure PyTorch functions.
+- Add an immutable, validated parameter schema and explicit actuator alias.
+- Avoid the upstream BAM/mjlab dependency and initialization machinery.
+- Retain fitted q_offset and command_delay as metadata without applying them.
+- Keep viscous damping and friction randomization outside the dry-friction budget.
+- Integrate with mjlab 1.6 using independent per-world friction model fields.
+- Apply an explicit motor/joint torque cap and seed native friction constraints.
+- Invalidate preceding-solve loads on partial reset; let mjlab apply delay once.
+- Apply optional dry-friction scaling once and resample only selected resets.
+- Recover direct and projected external loads from the preceding smooth force.
+- Mark preceding-solve loads valid in post-step update, not control writes.
+
+The M6 quadratic term follows pinned bam/model.py, the scalar identification
+model: it is enabled only for opposite torque signs, and only for unequal
+absolute motor/load magnitudes. This corrects the pinned bam/mjlab.py port,
+which omits the sign gate and takes its backdrive branch for equal magnitudes.
+
+Bundled parameter JSON is an unmodified manufacturer's public 7.4 V fit.
+It is not a measurement or calibration of the HT Microduck robot. See
+params/README.md for source, checksum and identification metadata limitations.

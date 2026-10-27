@@ -1,0 +1,8 @@
+{
+  "voltage_v": 24.0,
+  "gear_ratio": 32.0,
+  "rpm": [0.0, 26.0, 59.0, 92.0, 128.0, 167.0, 211.0, 258.0, 300.0],
+  "motoring_torque_nm": [3.7, 3.5, 3.0, 2.5, 2.0, 1.5, 1.0, 0.5, 0.0],
+  "stall_torque_nm": 3.7,
+  "continuous_rated_torque_nm": 0.6
+}
