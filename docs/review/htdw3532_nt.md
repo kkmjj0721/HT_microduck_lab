@@ -2,7 +2,7 @@
 
 ## 审查范围与证据
 
-- 任务：[T035](../development.md#t035-实现并接入-3532-nt-pd-执行器)，[设计](../design/htdw3532_nt.md)。
+- 任务：[T035](../archive/development_tasks.md#t035-实现并接入-3532-nt-pd-执行器)，[设计](../design/htdw3532_nt.md)。
 - 实现者：电机实现代理、测试代理及主代理；独立审查者只读，不参加被审查代码的编写。
 - 范围：新电机模块及参数资源、根导出、constants、两项正式工具、三项相关测试、README 和开发/设计文档。
 - 基准：`.artifacts/t035-nt/before.json` 与 `before/`，包含未跟踪文件；原有未提交修改须保留。

@@ -615,27 +615,35 @@ dependencies = [
     { name = "torch", version = "2.14.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "(extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu118') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129') or (extra != 'extra-12-ht-microduck-cu129' and extra == 'extra-12-ht-microduck-cu130') or (extra != 'extra-12-ht-microduck-cpu' and extra != 'extra-12-ht-microduck-cu118' and extra != 'extra-12-ht-microduck-cu126' and extra != 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu130')" },
     { name = "tqdm" },
     { name = "tyro" },
-    { name = "warp-lang" },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.nvidia.com/" }, marker = "extra == 'extra-12-ht-microduck-cpu' or extra == 'extra-12-ht-microduck-cu130' or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129')" },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "(extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu118') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu129' and extra == 'extra-12-ht-microduck-cu130') or (extra != 'extra-12-ht-microduck-cpu' and extra != 'extra-12-ht-microduck-cu118' and extra != 'extra-12-ht-microduck-cu126' and extra != 'extra-12-ht-microduck-cu128' and extra != 'extra-12-ht-microduck-cu129' and extra != 'extra-12-ht-microduck-cu130')" },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" }, marker = "extra == 'extra-12-ht-microduck-cu118' or extra == 'extra-12-ht-microduck-cu126' or extra == 'extra-12-ht-microduck-cu128' or extra == 'extra-12-ht-microduck-cu129' or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130')" },
 ]
 
 [package.optional-dependencies]
 cpu = [
     { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" } },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.nvidia.com/" } },
 ]
 cu118 = [
     { name = "torch", version = "2.7.1+cu118", source = { registry = "https://download.pytorch.org/whl/cu118" } },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" } },
 ]
 cu126 = [
     { name = "torch", version = "2.14.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" } },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" } },
 ]
 cu128 = [
     { name = "torch", version = "2.11.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" } },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" } },
 ]
 cu129 = [
     { name = "torch", version = "2.13.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" } },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" } },
 ]
 cu130 = [
     { name = "torch", version = "2.14.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" } },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.nvidia.com/" } },
 ]
 export = [
     { name = "onnx" },
@@ -666,7 +674,13 @@ requires-dist = [
     { name = "torch", marker = "extra == 'cu130'", specifier = ">=2.7.0,<3.0.0", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "ht-microduck", extra = "cu130" } },
     { name = "tqdm", specifier = ">=4.67.0" },
     { name = "tyro", specifier = ">=1.0.1" },
-    { name = "warp-lang", specifier = ">=1.14.0", index = "https://pypi.nvidia.com/" },
+    { name = "warp-lang", specifier = ">=1.14.0" },
+    { name = "warp-lang", marker = "extra == 'cpu'", specifier = ">=1.14.0", index = "https://pypi.nvidia.com/", conflict = { package = "ht-microduck", extra = "cpu" } },
+    { name = "warp-lang", marker = "extra == 'cu118'", url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" },
+    { name = "warp-lang", marker = "extra == 'cu126'", url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" },
+    { name = "warp-lang", marker = "extra == 'cu128'", url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" },
+    { name = "warp-lang", marker = "extra == 'cu129'", url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" },
+    { name = "warp-lang", marker = "extra == 'cu130'", specifier = ">=1.14.0", index = "https://pypi.nvidia.com/", conflict = { package = "ht-microduck", extra = "cu130" } },
 ]
 provides-extras = ["cpu", "cu118", "cu126", "cu128", "cu129", "cu130", "export"]
 
@@ -951,7 +965,9 @@ dependencies = [
     { name = "tyro" },
     { name = "viser" },
     { name = "wandb" },
-    { name = "warp-lang" },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.nvidia.com/" }, marker = "extra == 'extra-12-ht-microduck-cpu' or extra == 'extra-12-ht-microduck-cu130' or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129')" },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "(extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu118') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu129' and extra == 'extra-12-ht-microduck-cu130') or (extra != 'extra-12-ht-microduck-cpu' and extra != 'extra-12-ht-microduck-cu118' and extra != 'extra-12-ht-microduck-cu126' and extra != 'extra-12-ht-microduck-cu128' and extra != 'extra-12-ht-microduck-cu129' and extra != 'extra-12-ht-microduck-cu130')" },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" }, marker = "extra == 'extra-12-ht-microduck-cu118' or extra == 'extra-12-ht-microduck-cu126' or extra == 'extra-12-ht-microduck-cu128' or extra == 'extra-12-ht-microduck-cu129' or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130')" },
 ]
 sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/f7/0a/6679b04d90f66a714b1da45b7d9e1fbc9926b15708df237a043db109375e/mjlab-1.6.0.tar.gz", hash = "sha256:d2938936037a591f26f2fc16ba0ba32c579ab1077abda0bf1eed9b0d2a415703", size = 14116570, upload-time = "2026-08-09T00:23:43.159Z" }
 wheels = [
@@ -1030,7 +1046,9 @@ dependencies = [
     { name = "etils", extra = ["epath"] },
     { name = "mujoco" },
     { name = "numpy" },
-    { name = "warp-lang" },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.nvidia.com/" }, marker = "extra == 'extra-12-ht-microduck-cpu' or extra == 'extra-12-ht-microduck-cu130' or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129')" },
+    { name = "warp-lang", version = "1.18.0", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "(extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu118') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu129' and extra == 'extra-12-ht-microduck-cu130') or (extra != 'extra-12-ht-microduck-cpu' and extra != 'extra-12-ht-microduck-cu118' and extra != 'extra-12-ht-microduck-cu126' and extra != 'extra-12-ht-microduck-cu128' and extra != 'extra-12-ht-microduck-cu129' and extra != 'extra-12-ht-microduck-cu130')" },
+    { name = "warp-lang", version = "1.18.0+cu12", source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" }, marker = "extra == 'extra-12-ht-microduck-cu118' or extra == 'extra-12-ht-microduck-cu126' or extra == 'extra-12-ht-microduck-cu128' or extra == 'extra-12-ht-microduck-cu129' or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130')" },
 ]
 sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/2c/02/da883029b3661619651d0e2469ec17df92dd64ca5de25119886d516ee1de/mujoco_warp-3.11.0.tar.gz", hash = "sha256:e9e521a3809b95baa98c44bd4fcaccb035b5c700e2616efc52ebc33d29ae2eef", size = 2075418, upload-time = "2026-07-28T01:21:41.987Z" }
 wheels = [
@@ -2923,12 +2941,72 @@ wheels = [
 name = "warp-lang"
 version = "1.18.0"
 source = { registry = "https://pypi.nvidia.com/" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "extra == 'extra-12-ht-microduck-cpu' or extra == 'extra-12-ht-microduck-cu130' or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129')" },
 ]
 wheels = [
     { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.18.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:090962bfae7dd22ade0d8e0258f41635e0e58980f15bcc9e7a7d312819dfe440" },
 ]
+
+[[package]]
+name = "warp-lang"
+version = "1.18.0"
+source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+dependencies = [
+    { name = "numpy", marker = "(extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu118') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu126') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu118' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu128') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu126' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu129') or (extra == 'extra-12-ht-microduck-cu128' and extra == 'extra-12-ht-microduck-cu130') or (extra == 'extra-12-ht-microduck-cu129' and extra == 'extra-12-ht-microduck-cu130') or (extra != 'extra-12-ht-microduck-cpu' and extra != 'extra-12-ht-microduck-cu118' and extra != 'extra-12-ht-microduck-cu126' and extra != 'extra-12-ht-microduck-cu128' and extra != 'extra-12-ht-microduck-cu129' and extra != 'extra-12-ht-microduck-cu130')" },
+]
+wheels = [
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/13/69/5fc4388c6af4c78cd247776bb6928cabe83d893896444dd2127ccbe8b2ca/warp_lang-1.18.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:090962bfae7dd22ade0d8e0258f41635e0e58980f15bcc9e7a7d312819dfe440", size = 148811186, upload-time = "2026-10-05T00:23:01.197Z" },
+]
+
+[[package]]
+name = "warp-lang"
+version = "1.18.0+cu12"
+source = { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+dependencies = [
+    { name = "numpy", marker = "extra == 'extra-12-ht-microduck-cu118' or extra == 'extra-12-ht-microduck-cu126' or extra == 'extra-12-ht-microduck-cu128' or extra == 'extra-12-ht-microduck-cu129' or (extra == 'extra-12-ht-microduck-cpu' and extra == 'extra-12-ht-microduck-cu130')" },
+]
+wheels = [
+    { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:6dda3c163dde4edaa7d46ade9fff3ddb1126ee7b147d9d890cd38cc70dafd656" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "blosc", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64' and extra == 'examples') or (sys_platform != 'win32' and extra == 'examples')", specifier = ">=1.11.1" },
+    { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
+    { name = "matplotlib", marker = "extra == 'examples'", specifier = ">=3.7.5" },
+    { name = "ml-dtypes", marker = "extra == 'dev'", specifier = ">=0.5.4" },
+    { name = "myst-parser", marker = "extra == 'docs'" },
+    { name = "nlopt", marker = "(python_full_version < '3.15' and platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64' and extra == 'examples') or (python_full_version < '3.15' and sys_platform != 'win32' and extra == 'examples')" },
+    { name = "numpy" },
+    { name = "nvidia-sphinx-theme", marker = "extra == 'docs'" },
+    { name = "nvtx", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64' and extra == 'dev') or (sys_platform != 'win32' and extra == 'dev')" },
+    { name = "pillow", marker = "extra == 'examples'", specifier = ">=10.4.0" },
+    { name = "pre-commit", marker = "extra == 'docs'" },
+    { name = "psutil", marker = "extra == 'examples'", specifier = ">=7.1.0" },
+    { name = "pyglet", marker = "extra == 'examples'", specifier = ">=2.1.9" },
+    { name = "sphinx-copybutton", marker = "extra == 'docs'" },
+    { name = "torch", marker = "extra == 'torch-cu12'", specifier = ">=2.7.0" },
+    { name = "torch", marker = "extra == 'torch-cu13'", specifier = ">=2.9.0" },
+    { name = "usd-core", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64' and sys_platform == 'win32' and extra == 'benchmark') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'benchmark') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'benchmark')", specifier = ">=25.5" },
+    { name = "usd-core", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64' and sys_platform == 'win32' and extra == 'examples') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'examples') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'examples')", specifier = ">=25.5" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'benchmark'", specifier = ">=2.2" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'examples'", specifier = ">=2.2" },
+    { name = "warp-lang", extras = ["docs"], marker = "extra == 'dev'" },
+    { name = "warp-lang", extras = ["examples"], marker = "extra == 'dev'" },
+    { name = "warp-lang", extras = ["examples"], marker = "extra == 'torch-cu12'" },
+    { name = "warp-lang", extras = ["examples"], marker = "extra == 'torch-cu13'" },
+]
+provides-extras = ["docs", "benchmark", "examples", "torch-cu12", "torch-cu13", "dev"]
 
 [[package]]
 name = "wcwidth"

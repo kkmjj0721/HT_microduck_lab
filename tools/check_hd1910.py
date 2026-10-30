@@ -15,11 +15,11 @@ from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
 from mjlab.scene import Scene, SceneCfg
 from mjlab.sim import MujocoCfg, Simulation, SimulationCfg
 
-from ht_microduck.actuators.HD_1910_C001.friction_dr_bam import (
+from ht_microduck.actuator.HD_1910_C001.friction_dr_bam import (
     FrictionDRBamActuator,
     FrictionDRBamActuatorCfg,
 )
-from ht_microduck.actuators.HD_1910_C001.model import compute_friction_budget
+from ht_microduck.actuator.HD_1910_C001.model import compute_friction_budget
 
 _JOINT_NAMES = ("servo_0", "servo_1", "servo_2")
 _EFFORT_LIMIT = 0.35

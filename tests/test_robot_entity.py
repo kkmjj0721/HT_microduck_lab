@@ -8,8 +8,7 @@ from mjlab.scene import Scene, SceneCfg
 from mjlab.sim import MujocoCfg
 from mjlab.terrains import TerrainEntityCfg
 
-from ht_microduck.robots import HT_MICRODUCK_ROBOT_CFG, get_ht_microduck_robot_cfg
-from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
+from ht_microduck.robot.ht_microduck_constants import (
     BRUSHLESS_ACTUATOR_CFG,
     BRUSHLESS_ARMATURE,
     COLLISION_GEOM_NAMES,
@@ -17,9 +16,11 @@ from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
     FULL_COLLISION,
     HOME_FRAME,
     HOME_JOINT_POS,
+    HT_MICRODUCK_ROBOT_CFG,
     JOINT_NAMES,
     MJCF_PATH,
     SERVO_ACTUATOR_CFG,
+    get_ht_microduck_robot_cfg,
     get_robot_spec,
     get_spec,
     make_preview,

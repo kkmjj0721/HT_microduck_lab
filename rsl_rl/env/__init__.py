@@ -5,10 +5,6 @@
 
 """Environment definition."""
 
-from .. import _fallback
-
-__path__ = _fallback.extend(__file__, __path__)
-
 from .vec_env import VecEnv
 
 __all__ = ["VecEnv"]

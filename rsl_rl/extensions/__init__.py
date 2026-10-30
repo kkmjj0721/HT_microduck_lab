@@ -5,10 +5,6 @@
 
 """Extensions for the learning algorithms."""
 
-from .. import _fallback
-
-__path__ = _fallback.extend(__file__, __path__)
-
 from .rnd import RandomNetworkDistillation, resolve_rnd_config
 from .symmetry import Symmetry, resolve_symmetry_config
 

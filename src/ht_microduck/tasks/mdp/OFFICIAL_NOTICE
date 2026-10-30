@@ -1,0 +1,6 @@
+官方任务实现来源：pollen-robotics/microduck_rl
+固定提交：bae39f5900b318f7e87fc485c30a31213cfa14eb
+上游路径：src/mjlab_microduck/tasks/，源码许可 Apache-2.0。
+基础配置来源：mujocolab/mjlab v1.3.0，src/mjlab/tasks/velocity/velocity_env_cfg.py。
+本地适配：mjlab 1.6.0 接口、HT 机器人命名、14 个策略关节、混合执行器和已测量姿态参考。
+OFFICIAL_LICENSE 保留上游 Apache-2.0 许可原文。

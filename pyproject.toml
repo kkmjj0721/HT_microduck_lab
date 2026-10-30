@@ -19,16 +19,20 @@ dependencies = [
     "tyro>=1.0.1",
     "warp-lang>=1.14.0",
 ]
-# mjlab brings RSL-RL as a transitive dependency. The project's PPO, networks,
-# storage, runner, and training entry point will live in ht_microduck.
+# mjlab brings rsl-rl-lib==5.4.2 as a transitive dependency. This repository keeps
+# a verbatim copy at rsl_rl/ and that copy -- not the wheel -- is what training,
+# replay and export import; see src/ht_microduck/__init__.py for the ordering.
+# GitPython is not declared here on purpose: rsl_rl/utils/logger.py imports it, but
+# rsl-rl-lib==5.4.2 already requires it, and declaring it again would force a full
+# re-resolve of uv.lock for one already-guaranteed edge.
 
 [project.optional-dependencies]
-cpu = ["torch>=2.7.0,<3.0.0"]
-cu118 = ["torch>=2.7.0,<3.0.0"]
-cu126 = ["torch>=2.7.0,<3.0.0"]
-cu128 = ["torch>=2.7.0,<3.0.0"]
-cu129 = ["torch>=2.7.0,<3.0.0"]
-cu130 = ["torch>=2.7.0,<3.0.0"]
+cpu = ["torch>=2.7.0,<3.0.0", "warp-lang>=1.14.0"]
+cu118 = ["torch>=2.7.0,<3.0.0", "warp-lang>=1.14.0"]
+cu126 = ["torch>=2.7.0,<3.0.0", "warp-lang>=1.14.0"]
+cu128 = ["torch>=2.7.0,<3.0.0", "warp-lang>=1.14.0"]
+cu129 = ["torch>=2.7.0,<3.0.0", "warp-lang>=1.14.0"]
+cu130 = ["torch>=2.7.0,<3.0.0", "warp-lang>=1.14.0"]
 export = [
     "onnx>=1.18.0",
     "onnxruntime>=1.19.0",
@@ -40,10 +44,18 @@ dev = [
     "ruff>=0.11.0",
 ]
 
-# Enable these entry points once the corresponding CLI main() functions exist.
+# Imported by `import mjlab` at startup (mjlab/__init__.py::_import_registered_packages),
+# which is what makes our tasks appear in `list_tasks()` without an explicit import.
+[project.entry-points."mjlab.tasks"]
+ht_microduck = "ht_microduck.tasks"
+
+# Both names delegate to mjlab's own train/play entry points: the CLI, log layout
+# and viewer are upstream's, only the resolved `rsl_rl` differs (see train_cli.py).
+# They are NOT named `train`/`play`: mjlab installs those, same-name console
+# scripts are last-writer-wins, and the loser leaves a stale shim behind.
 [project.scripts]
-duck-train = "ht_microduck.cli.train:main"
-duck-play = "ht_microduck.cli.play:main"
+duck-train = "ht_microduck.train_cli:main"
+duck-play = "ht_microduck.play_cli:main"
 
 [tool.uv]
 # The initial training environment targets Linux x86_64 with an NVIDIA GPU.
@@ -112,14 +124,24 @@ torch = [
     { index = "pytorch-cu129", extra = "cu129" },
     { index = "pytorch-cu130", extra = "cu130" },
 ]
-warp-lang = { index = "nvidia" }
+# Warp's default 1.18 wheel uses CUDA 13; CUDA 12 backends use NVIDIA's
+# same-version compatibility build so R525-R579 drivers can run the simulator.
+warp-lang = [
+    { index = "nvidia", extra = "cpu" },
+    { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl", extra = "cu118" },
+    { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl", extra = "cu126" },
+    { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl", extra = "cu128" },
+    { url = "https://github.com/NVIDIA/warp/releases/download/v1.18.0/warp_lang-1.18.0%2Bcu12-py3-none-manylinux_2_28_x86_64.whl", extra = "cu129" },
+    { index = "nvidia", extra = "cu130" },
+]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 88
 src = ["src"]
-# rsl_rl/ is a read-only mirror of upstream RSL-RL (BSD-3-Clause) kept as reference
-# for PPO and network design. It keeps upstream style and must not be reformatted.
+# rsl_rl/ is the project's copy of rsl-rl-lib 5.4.2 (BSD-3-Clause) and is the code
+# training/replay/export actually import. It is a verbatim vendor drop: it keeps
+# upstream style and must not be reformatted or patched in place.
 # force-exclude makes the exclusion apply even when the path is passed explicitly.
 extend-exclude = ["rsl_rl"]
 force-exclude = true

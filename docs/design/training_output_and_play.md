@@ -3,6 +3,14 @@
 关联任务：[T027](../development.md)（进行中）。本文件只记录接口与实施决策，
 任务状态在开发文档统一维护。
 
+> **已被 T046/T047 取代的部分。** 本文第 1 条与阶段表中的 `algorithms/logger.py`、
+> `algorithms/runner.py`、`cli/train.py` 是"在自实现训练栈上改造"的方案。T046 改为直接复用
+> 官方 `mjlab.scripts.train`/`play`，T047 删除了 `algorithms/` 与 `cli/`，训练算法只剩仓库根
+> `rsl_rl/`。因此下文涉及这三个文件的实现步骤不再执行，其目标（RSL-RL 面板、`model_N.pt`、
+> `params/*.yaml`、`metrics.jsonl`）由 mjlab 入口与本仓库 `rsl_rl/` 承担；`duck-play` 的三种
+> 策略与两种 viewer 已在 T046 验收。设计其余部分（目录布局、checkpoint 命名、评估口径）仍有效。
+> 见 [repo_structure_official_parity.md](repo_structure_official_parity.md)。
+
 ## 目标与范围
 
 用户要求把训练输出、日志目录、checkpoint 命名和回放入口尽量对齐官方

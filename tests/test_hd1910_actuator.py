@@ -12,12 +12,12 @@ import pytest
 import torch
 from mjlab.actuator.actuator import TransmissionType
 
-from ht_microduck.actuators.HD_1910_C001.bam_actuator import HD1910BamActuatorCfg
-from ht_microduck.actuators.HD_1910_C001.friction_dr_bam import (
+from ht_microduck.actuator.HD_1910_C001.bam_actuator import HD1910BamActuatorCfg
+from ht_microduck.actuator.HD_1910_C001.friction_dr_bam import (
     FrictionDRBamActuator,
     FrictionDRBamActuatorCfg,
 )
-from ht_microduck.actuators.HD_1910_C001.model import (
+from ht_microduck.actuator.HD_1910_C001.model import (
     compute_friction_budget,
     compute_motor_torque,
     load_hd1910_parameters,

@@ -19,34 +19,48 @@
 例如，本机 Toolkit 为 12.6 时选择 `cu126`。`nvidia-smi` 显示的是驱动能力，
 安装脚本不会将其用作已安装 Toolkit 的版本。驱动与 PyTorch、Warp 的运行兼容性仍需检查。
 
-## 1. 准备 uv 和 Python
+## 1. 一键安装 .venv
 
-检查工具和 GPU 驱动：
-
-```bash
-uv --version
-nvidia-smi
-nvcc --version
-```
-
-如果尚未安装 uv，可以使用[官方安装方式](https://docs.astral.sh/uv/getting-started/installation/)：
+在仓库根目录执行：
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+bash setup.sh
 ```
 
-安装后重新打开终端，再确认 `uv --version` 可以运行。
+脚本参考 `/home/sunteng/projects/quadruped_lab/setup.sh`，自动发现 uv，缺失时通过官方安装器
+安装到 `~/.local/bin`；随后调用本项目 `tools/setup_env.py`，由 uv 准备 Python 3.12、
+创建或同步仓库根目录的 `.venv/`，默认包含开发工具和 ONNX 导出依赖。
+已有环境直接同步，依赖版本受 `uv.lock` 约束。脚本可以通过绝对路径从其他目录启动，
+安装目标仍固定为本项目 `.venv/`。
 
-进入本项目并准备 Python 3.12：
+查看选项、预览安装计划或在无 CUDA Toolkit 的机器安装 CPU 依赖：
 
 ```bash
-cd /home/sunteng/projects/HT_microduck_lab
-uv python install 3.12
+bash setup.sh --help
+bash setup.sh --dry-run
+bash setup.sh --torch-backend cpu
 ```
 
-其他机器上的仓库路径不同时，替换上述 `cd` 路径。
+默认按本机 Toolkit **精确匹配** CUDA 后端，检测失败时会报告原因；CPU 后端需显式选择。
+`--torch-backend` 与原安装器的 `--backend` 等价，也支持 `--cuda-home`、`--no-dev` 和
+`--no-export`。`--dry-run` 不安装 uv、Python 或依赖，需要已有 uv 与可用的 Python 3.10+
+（系统解释器或 uv 可发现的 Python 3.12）。
 
-## 2. 安装项目依赖
+脚本安装 uv 时不修改 shell 配置，使用 [uv 官方安装器选项](https://docs.astral.sh/uv/reference/installer/)
+`UV_INSTALL_DIR` 和 `UV_NO_MODIFY_PATH`。若安装结束提示 uv 不在当前终端 PATH 中，执行：
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+设置了 `UV_PROXY` 时，脚本为安装器与 Python 子进程补齐 HTTP/HTTPS 代理变量，保留已设置的代理值。
+CUDA Toolkit、NVIDIA 驱动仍需由系统提供；GPU 环境可用 `nvidia-smi` 和 `nvcc --version` 检查。
+安装后推荐 `uv run --no-sync ...`，也可在当前终端用 `source .venv/bin/activate` 激活。
+
+## 2. 依赖同步与后端选择
+
+以下为一键入口内部调用的 Python 安装器；已有 uv 和 Python 3.10+ 时也可直接使用。
+它只依赖 Python 标准库；uv 在同步时准备项目所需的 Python 3.12。
 
 可以先预览识别结果和安装命令；此步骤不安装包，也不修改环境：
 
@@ -60,7 +74,7 @@ python3 tools/setup_env.py --dry-run
 python3 tools/setup_env.py
 ```
 
-脚本仅使用 Python 标准库，可以在项目依赖尚未安装时运行。它会找到本机选用的 `nvcc`，
+安装器会找到本机选用的 `nvcc`，
 解析 `nvcc --version`，将 Toolkit 的主、次版本精确转换为 PyTorch 后端，再执行带对应
 `--extra` 的 `uv sync --locked --python 3.12`。
 
@@ -114,14 +128,21 @@ uv sync --locked --python 3.12 --extra cu126 --extra export
 | 包 | 包源 |
 |---|---|
 | PyTorch | `https://download.pytorch.org/whl/<所选后端>` |
-| Warp | `https://pypi.nvidia.com/` |
+| Warp（`cpu` / `cu130`） | `https://pypi.nvidia.com/` |
+| Warp（`cu118` / `cu126` / `cu128` / `cu129`） | NVIDIA Warp 官方 GitHub Release 的 `1.18.0+cu12` wheel |
 | 其他依赖 | `https://pypi.tuna.tsinghua.edu.cn/simple`（清华 PyPI 镜像） |
 
 普通依赖使用 [清华 PyPI 镜像](https://mirrors.tuna.tsinghua.edu.cn/help/pypi/)，
 减少访问 PyPI 官方文件服务器超时的情况。PyTorch 的 CUDA 后端选择不受此设置影响。
 
-项目的 PPO、网络、轨迹存储、Runner 和训练入口将在本仓库实现。
-RSL-RL 会随 mjlab 的依赖安装。
+Warp 的构建也需要匹配驱动。按 [Warp v1.18.0 官方安装说明](https://github.com/NVIDIA/warp/blob/v1.18.0/docs/user_guide/installation.rst)，
+默认 wheel 使用 CUDA 13.4，要求 R580 及以上驱动；官方同版本 `+cu12` 构建要求 R525 及以上。
+本项目为 CUDA 12 系列及 `cu118` 后端锁定此兼容构建，`cpu` 和 `cu130` 保留 NVIDIA 源。
+这不会切换系统 Toolkit，也不保证旧驱动可运行全部仿真依赖；PyTorch、Warp 与 GPU JIT
+仍需按下一节分别验证。每次运行 `setup.sh` 都按后端恢复对应的锁定构建。
+
+RSL-RL wheel 会随 mjlab 的依赖安装；训练实际使用的 PPO、网络、轨迹存储和 Runner
+来自本仓库根目录的 `rsl_rl/`，入口关系见 [README](../README.md#训练与回放)。
 
 ## 3. 验证安装和 GPU 环境
 
@@ -195,7 +216,7 @@ uv run --no-sync ruff check src tools tests
 在新机器或更新仓库后，重新执行推荐的同步命令：
 
 ```bash
-python3 tools/setup_env.py
+bash setup.sh
 ```
 
 检查锁文件与依赖声明是否一致：
@@ -215,13 +236,70 @@ python3 tools/setup_env.py
 
 ## 5. 当前训练入口状态
 
-项目目前包含依赖配置、锁文件、机器人 MJCF 和 mesh 资源。
-`ht_microduck_constants.py` 已记录关节分组与电机型号并实现 MJCF 加载，
-`tools/check_robot.py` 提供模型编译、关节映射检查及静态预览。mjlab 实体、执行器、训练环境与本地算法链路待实现。
+`duck-train` 与 `duck-play` 已启用，是官方 `mjlab.scripts.train` / `mjlab.scripts.play`
+的薄封装；`duck-eval` 与 `duck-export` 仍属后续任务。
 
-`pyproject.toml` 已用注释预留 `duck-train`、`duck-play`、`duck-eval` 和 `duck-export`。
-实现 `ht_microduck.cli` 中对应的 `main()` 后，再启用这些入口并重新运行安装脚本。
-当前安装完成后，还不能使用上述命令启动本项目训练。
+`pyproject.toml` 用 `[project.entry-points."mjlab.tasks"]` 注册任务包，`import mjlab`
+时会自动加载 `ht_microduck.tasks`。**改动该 entry point、`[project.scripts]` 或包结构后，
+需要重新安装本包**，否则 `dist-info/entry_points.txt` 仍是旧内容：
+
+```bash
+uv pip install --no-deps -e .
+uv run --no-sync list-envs        # 应能看到 HtDuck-Flat-Velocity
+```
+
+## 6. 训练日志可视化
+
+`duck-train` 默认把 TensorBoard 事件写到 `logs/rsl_rl/<experiment_name>/<时间戳>_<run_name>/`
+（`--log-root` 可改根目录），该目录被 `.gitignore` 排除，不随仓库分发。
+在本机查看曲线：
+
+```bash
+uv run --no-sync tensorboard --logdir logs/rsl_rl --bind_all --port 6006
+```
+
+`--bind_all` 让同一局域网内的浏览器可以访问；只在开发机本机查看时改用
+`--host 127.0.0.1` 更安全。服务以前台方式运行，用 `Ctrl+C` 结束；不需要时不要
+长期驻留，也不要在训练进行中反复刷新页面代替等待。
+
+需要从其他机器访问时，优先用 SSH 端口转发，而不是把 TensorBoard 直接暴露到公网：
+
+```bash
+ssh -N -L 6006:127.0.0.1:6006 <user>@<开发机地址>
+# 浏览器打开 http://127.0.0.1:6006
+```
+
+端口、主机名和转发方式按本机实际网络确定，不要照抄示例地址。
+训练产物（事件文件、检查点、`params/*.yaml`、`git/*.diff`）保留在输出目录，
+代码仓库只保留复现实验所需的配置与结论。
+
+## 7. XN-4090-GPU1 远端环境
+
+通过 `ssh hupeiyan@j4.tx.ppp.clicki.cn` 进入堡垒机，输入 `p` 后选择资产 1
+（XN-4090-GPU1）。本项目部署目录为 `/data/hupeiyan/projects/HT_microduck_lab`，
+上传的是当前工作区源码快照，包含未提交的实现、机器人资源与本地 `rsl_rl/`，不包含本机
+`.venv`、Git 历史或训练产物。Python 3.12.14 在远端单独准备，项目环境由 uv 创建。
+
+该机 Toolkit 为 `/usr/local/cuda-12.8`（12.8.93），驱动为 570.124.06，选择 `cu128`。
+GitHub 不可达且清华镜像返回 403，本次传输已验证的 Python/Warp 缓存，并从可达的阿里云 PyPI 镜像
+补齐其他锁定依赖。下载准备期间只替换临时下载地址，保留版本与 SHA256，结束后恢复原始
+`uv.lock`；正式安装使用原锁文件与项目内缓存。再次同步使用：
+
+```bash
+cd /data/hupeiyan/projects/HT_microduck_lab
+UV_CACHE_DIR="$PWD/.cache/uv" UV_OFFLINE=1 bash setup.sh --cuda-home /usr/local/cuda-12.8
+```
+
+保留 `.cache/uv` 供离线同步使用。日常无需访问包源：
+
+```bash
+source .venv/bin/activate
+uv run --no-sync list-envs
+```
+
+GPU 检查通过 `CUDA_VISIBLE_DEVICES=GPU-450c3470-1f63-9d53-43d4-366538571ecf`
+选择物理 GPU 1，在进程内显示为 `cuda:0`。
+训练时按服务器实际空闲情况选择 GPU；环境安装本身不启动训练。
 
 ## 常见问题
 

@@ -14,13 +14,13 @@ from mjlab.actuator.actuator import ActuatorCmd, TransmissionType
 from mjlab.actuator.fused_group import FusedActuatorGroup
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
 
-from ht_microduck.actuators.HTDW_3532_02_DNE import model as nt_model
-from ht_microduck.actuators.HTDW_3532_02_DNE.model import (
+from ht_microduck.actuator.HTDW_3532_02_DNE import model as nt_model
+from ht_microduck.actuator.HTDW_3532_02_DNE.model import (
     clip_nt_torque,
     load_htdw3532_parameters,
     motoring_torque_limit,
 )
-from ht_microduck.actuators.HTDW_3532_02_DNE.nt_actuator import (
+from ht_microduck.actuator.HTDW_3532_02_DNE.nt_actuator import (
     HTDW3532Actuator,
     HTDW3532ActuatorCfg,
 )

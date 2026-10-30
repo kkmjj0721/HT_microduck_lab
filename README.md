@@ -2,17 +2,43 @@
 
 基于 **mjlab 1.6.0** 的 HT Microduck 机器人仿真与强化学习项目，采用 **12 个无刷电机 + 3 个舵机** 混合驱动。
 
-mjlab 负责仿真、场景和环境管理；执行器模型与训练代码放在独立 Python 包
+mjlab 负责仿真、场景和环境管理；执行器模型、任务注册与训练入口放在独立 Python 包
 `ht_microduck` 中，发行包名为 `ht-microduck`。
-目前已提供机器人模型、混合执行器、IMU 仿真传感器、平地速度任务环境，以及本仓库自带的
-网络、轨迹 Storage、PPO 与 Runner；`duck-train` 与 `duck-play` 可用。训练输出格式、日志目录
-和回放入口对齐官方 mjlab + RSL-RL 约定；训练只验证到"链路通、可恢复、可回放"，
+目前已提供机器人模型、混合执行器、IMU 仿真传感器和平地速度任务环境。训练与回放直接复用
+官方 `mjlab` 入口，PPO、网络与 Runner 来自本仓库根目录的 `rsl_rl/`；`duck-train` 与
+`duck-play` 是其薄封装。训练只验证到"链路通、可恢复、可回放"，
 `duck-eval`/`duck-export` 属于后续任务。
+
+## 目录结构
+
+```
+src/ht_microduck/
+  tasks/                  # 任务注册、契约，以及按职责分层的配置与 MDP
+    __init__.py           # register_mjlab_task（经 mjlab.tasks entry point 自动发现）
+    contract.py           # 各任务时序/动作/观测契约
+    config/               # 五个 *_env_cfg.py、rl_cfg.py 与地形配置
+    mdp/                  # 官方 MDP 与独立保留的 VelStand 实现
+    rl/                   # 任务检查点恢复与数值适配
+  robot/
+    ht_microduck_constants.py   # 关节/电机分组/初态/执行器装配
+    ht_microduck/               # HT-DK_URDF.xml 与 16 个 STL（数据目录）
+  actuator/                     # 3532 NT-PD 与 HD1910 BAM 模型及参数来源
+  train_cli.py                  # duck-train → mjlab.scripts.train
+  play_cli.py                   # duck-play  → mjlab.scripts.play
+rsl_rl/                         # rsl-rl-lib 5.4.2 完整副本，训练实际代码路径
+```
+
+包结构与官方 [pollen-robotics/microduck_rl](https://github.com/pollen-robotics/microduck_rl)
+保持相同的三个子包：`robot/`、`actuator/`、`tasks/`，机器人 MJCF 与 `assets/` 同级放在
+`robot/ht_microduck/` 数据目录里，训练算法只保留 `rsl_rl/` 一套。
+`tasks/` 内参考本机 `legged_wbc_mjlab` 按 `config/`、统一的 `mdp/` 和 `rl/` 分层，
+新增任务在 `config/` 定义环境与 RL 配置，再在 `tasks/__init__.py` 注册。
 
 ## 快速开始
 
 环境面向 **Linux x86_64、Python 3.12 和 NVIDIA GPU**。
-首次使用请按 [安装文档](docs/setup.md) 配置环境，通过 `tools/setup_env.py` 安装或同步依赖。
+首次使用在仓库根目录运行 `bash setup.sh`，自动准备 uv、Python 3.12 并安装到 `.venv/`。
+脚本调用 `tools/setup_env.py` 安装或同步依赖；CPU 安装与选项见 [安装文档](docs/setup.md)。
 安装后使用 `uv run --no-sync ...` 运行项目命令，保留已选定的 PyTorch 后端。
 
 在仓库根目录运行：
@@ -21,7 +47,7 @@ mjlab 负责仿真、场景和环境管理；执行器模型与训练代码放�
 # 编译模型，核对关节、电机分组与模型质量
 make model
 
-# 检查锁文件、代码、测试、模型和 Git 差异空白
+# 检查锁文件、代码、测试、模型、文档和 Git 差异空白
 make check
 ```
 
@@ -31,8 +57,9 @@ make check
 make viewer
 ```
 
-`make` 可列出全部检查入口。检查临时文件按次保存在 `.artifacts/checks/run-*`；
-这些检查覆盖模型与代码，GPU 动态运行需使用下方专项工具。
+`make` 可列出全部检查入口（`make docs` 单独检查文档链接、锚点和任务表）。
+检查临时文件按次保存在 `.artifacts/checks/run-*`；
+这些检查覆盖模型、代码与文档，GPU 动态运行需使用下方专项工具。
 静态预览用于核对外观和姿态，稳定站立与训练效果另行验收。
 
 ## GPU 专项检查
@@ -66,33 +93,93 @@ timeout 180s uv run --no-sync python -B tools/check_hd1910.py --device cuda:0
 # 冻结契约：时序、动作子集/顺序/缩放、观测维度、逐关节映射、保持关节
 timeout 300s uv run --no-sync python -B tools/check_task_contract.py --device cuda:0
 
-# 平地速度任务：形状、有限值、命令范围、零动作保持、超时与真实终止的区分
+# 官方平地速度任务：维度、逐关节动作映射、足端射线、局部重置与后期课程有限值
 timeout 600s uv run --no-sync python -B tools/check_velocity_env.py --device cuda:0
 
 # 短训练：采样 + PPO 更新，检查 loss/梯度有限、checkpoint 可写可恢复
-uv run --no-sync duck-train --num-envs 16 --iterations 5 --seed 0
+# 训练入口没有 --device；用 --gpu-ids None 走 CPU，或省略后由可见 GPU 决定
+uv run --no-sync duck-train HtDuck-Flat-Velocity --env.scene.num-envs 16 \
+  --agent.max-iterations 5 --agent.seed 0 --gpu-ids None
 ```
 
-可用 `--num-envs`、`--steps` 调整规模。上述工具验证仿真接入与短时响应；
-实机参数和稳定站立仍需标定与验收。失败现场保留至排查结束，完成后仅清理本次生成的产物目录。
-`duck-train` 默认按官方布局写到 `runs/<experiment_name>/<时间戳>_<run_name>/`，内含
-`params/env.yaml`、`params/agent.yaml`、`metrics.jsonl`、`model_<iteration>.pt` 和
-`model_last.pt`，控制台面板同样沿用 RSL-RL 的字段（`Total steps`、`Collection time`、
-`Mean reward`、`ETA` 等）。`--out-dir` 可固定一个扁平目录。短跑只证明训练链路与数值有限，
-不代表策略已学会行走。
+上述工具验证仿真接入与短时响应；实机参数和稳定站立仍需标定与验收。失败现场保留至排查
+结束，完成后仅清理本次生成的产物目录。
 
-回放已训练的策略（`--viewer native` 开 MuJoCo 窗口，`--viewer viser` 开浏览器视图，
-`--video` 录 mp4；省略 `--checkpoint-file` 时取最新 `model_*.pt`）：
+## 训练与回放
+
+两个入口都是 mjlab 官方 `train`/`play` 的薄封装，命令行、日志布局、控制台面板和查看器
+与官方一致；第一个位置参数是任务 id。训练支持`--env.*` / `--agent.*`覆盖任务的
+`ManagerBasedRlEnvCfg` / `RslRlOnPolicyRunnerCfg`字段，回放使用官方`PlayConfig`选项。
+任务列表可用
+`uv run --no-sync list-envs` 查看：
+
+| 任务 id | 训练目标 |
+|---|---|
+| `HtDuck-Flat-Velocity` | 官方平地速度与随机头颈姿态跟踪 |
+| `HtDuck-Flat-Velocity-Head` | 与 Velocity 使用同一官方配方，保留独立任务 ID 与日志 |
+| `HtDuck-Flat-StandUp` | 从站、坐、前躺与后躺初态起立，并学习躯干指令 |
+| `HtDuck-Flat-SitStand` | 受令坐站切换 |
+| `HtDuck-Flat-VelStand` | 行走、站立与恢复技能组合 |
+| `HtDuck-Flat-SitStand-Unbounded` | 坐站原始动作目标语义的对照 |
+| `HtDuck-Flat-VelStand-Unbounded` | 组合任务原始动作目标语义的对照 |
 
 ```bash
-uv run --no-sync duck-play --checkpoint-file runs/flat_velocity/model_last.pt
-uv run --no-sync duck-play --agent zero --num-envs 1          # 零动作基线
-uv run --no-sync duck-play --checkpoint-file ... --video       # 录到 <checkpoint 目录>/videos/play
+# 训练：默认写到 logs/rsl_rl/<experiment_name>/<时间戳>_<run_name>/
+uv run --no-sync duck-train HtDuck-Flat-Velocity --agent.max-iterations 3000
+
+# 头颈联动：每 2–5 s 改变目标，范围在 0/500/1000/1500/2000 迭代逐步扩大
+uv run --no-sync duck-train HtDuck-Flat-Velocity-Head
+
+# 回放：--agent zero|random|trained，--checkpoint-file 指定权重，--video 录 mp4
+uv run --no-sync duck-play HtDuck-Flat-Velocity --agent trained --checkpoint-file .../model_250.pt
+uv run --no-sync duck-play HtDuck-Flat-Velocity --agent zero --num-envs 1 --viewer viser
+
+# 使用 Head 任务对应的检查点；回放按检查点保存的课程阶段采样头部目标
+uv run --no-sync duck-play HtDuck-Flat-Velocity-Head --agent trained --checkpoint-file .../model_250.pt
 ```
+
+除 VelStand 外，现有任务的奖励、重置与课程采用官方 `microduck_rl@bae39f59` 的配方，机器人相关姿态与高度
+使用 HT 仿真实测值。两个 Velocity 任务都训练随机头颈指令，躯干槽位保留小范围随机输入且
+跟踪奖励为零；StandUp 逐步加入前后躺初态与躯干 z/roll/pitch 跟踪；SitStand 按官方节奏
+训练受令坐站。对应关系和必要适配见[任务对齐设计](docs/design/skill_task_migration.md#t055-除-velstand-外逐项对齐官方任务)。
+
+四个对齐任务都是 61 维 actor、14 维动作、`1.0 rad/action`、50 Hz（物理步 `.005 s`，
+decimation=4）；Velocity critic 为 76 维，StandUp/SitStand 为 74 维。VelStand 保留原有
+61/64/14与`.002 s × 10`；恢复窗口、初态概率和身体跟踪已按[恢复修复设计](docs/design/skill_task_migration.md#t057-官方恢复机制与-ht-坐站高度修复)修正，专家蒸馏另阶段实施。旧 64 维 critic 检查点、旧动作缩放和旧观测顺序不能用于
+新配方的完整恢复，须使用对应配置重新训练。短跑只验证运行链路，不代表已经学会各项技能。
+
+SitStand、VelStand 默认在扣除编码器偏置后，将绝对关节目标限制在模型的逐关节硬范围内；
+14维动作仍为`HOME + 1.0 × action`，上一动作观测和动作变化奖励仍使用策略原值。
+膝关节坐姿需要约1.6 rad偏移，因此没有统一裁剪原始动作至±1。新增的
+`Episode_Metrics/requested_target_outside_limits`、`applied_target_outside_limits`、
+`target_clip_fraction`、`actuator_saturation_fraction`和`actuator_saturation_duration`
+分别记录请求越界、实际下发越界、限幅比例、控制帧饱和比例和回合最长连续饱和秒数；指标不参与奖励。
+对应设计与验证范围见[目标约束设计](docs/design/skill_task_migration.md#t058-坐站与组合任务的关节目标约束)。
+
+目标约束改变了旧策略的控制语义，新配方使用新实验从零训练。回放旧权重作原行为对照时，
+使用显式`-Unbounded`任务；对照日志实验名带`_unbounded`，原训练目录保留：
+
+```bash
+uv run --no-sync duck-train HtDuck-Flat-SitStand --agent.run-name sitstand_bounded
+uv run --no-sync duck-play HtDuck-Flat-SitStand-Unbounded --agent trained --checkpoint-file .../model_5500.pt
+```
+
+训练也可用`--env.actions.joint-pos.bound-targets False`关闭约束；官方回放入口不支持
+`--env.*`覆盖，使用上述对照任务ID选择旧语义。部署时需要同步实现最终目标限幅；
+现阶段尚未提供对应的正式评估、部署导出及专家蒸馏入口。
+
+一次训练产出 `params/env.yaml`、`params/agent.yaml`、`git/<repo>.diff`、
+`model_<iteration>.pt` 和 TensorBoard `events.*`；控制台面板沿用 RSL-RL 字段
+（`Learning iteration`、`Total steps`、`Collection time`、`Mean reward`、`ETA` 等）。
+短跑只证明训练链路与数值有限，不代表策略已学会行走。
+
+训练走本仓库根目录的 `rsl_rl/`——它是 rsl-rl-lib 5.4.2 的完整副本，PPO、
+ActorCritic、Storage、Runner 和 Logger 全部来自这里，不依赖 `.venv` 里的 wheel。
+包初始化时把仓库根置于 `sys.path` 首位，让这份代码稳定地先于 wheel 被导入。
 
 ## 机器人与执行器
 
-模型 [HT-DK_URDF.xml](src/ht_microduck/robots/ht_microduck/xmls/HT-DK_URDF.xml)
+模型 [HT-DK_URDF.xml](src/ht_microduck/robot/ht_microduck/HT-DK_URDF.xml)
 及 16 个 STL 随包保存，包含自由基座和 15 个单轴关节，模型总质量约 **3.2947 kg**。
 本体 XML 只定义机器人和传感器，地形与灯光由 mjlab `Scene` 提供。
 被动源模型为 `nq=22`、`nv=21`、`nu=0`；场景装配执行器后为 `nu=15`。
@@ -103,7 +190,7 @@ uv run --no-sync duck-play --checkpoint-file ... --video       # 录到 <checkpo
 | 飞特 HD1910-C001 | 3 | `head_yaw_joint`、`head_roll_joint`、`mouth_joint` | 7.4 V BAM M6 + 摩擦模型 |
 
 关节名称、顺序、初态、碰撞与两组执行器配置统一在
-[ht_microduck_constants.py](src/ht_microduck/robots/ht_microduck/ht_microduck_constants.py)
+[ht_microduck_constants.py](src/ht_microduck/robot/ht_microduck_constants.py)
 中定义。策略的动作子集、输出顺序和控制周期由任务配置明确声明。
 
 当前无刷默认 `kp=10`、`kd=0.4`、力矩上限 `2 N·m`；舵机默认 `kp_fw=32`、
@@ -113,19 +200,20 @@ uv run --no-sync duck-play --checkpoint-file ... --video       # 录到 <checkpo
 `HOME_FRAME` 现在是蹲姿：`hip_pitch 0.85`、`calf −1.20`、`ankle 0.35`，
 `hip_roll` 镜像内收 `+0.0873/−0.0873`，根高 `0.1534 m`。脚底与地面平行（倾角 `0.13°`，
 旧零位是 `4.87°`），重心在脚掌前后各约 `35–40 mm` 之间基本居中。
-实测（[T038](docs/development.md#t038-标定-home-站姿)）：5 s 零动作保持 0/128 跌倒，
+实测（[T038](docs/archive/development_tasks.md#t038-标定-home-站姿)）：5 s 零动作保持 0/128 跌倒，
 根高稳定在 `0.150 m`；协调脉冲 `0.10–0.26 rad` 为 0/24，同幅度下旧零位在 `0.26 rad` 跌 2/24。
 根高对站姿影响很大：任何可见离地间隙都会让复位变成落体冲击并撞散蹲姿，
 所以 HOME 只留 `0.4 mm` 顶点余隙，不要为了"更保险"把 `pos` 调高。
 
 用户提出的 `hip_roll 0.38` / `hip_pitch 1.57` 无法采用：`1.57` 正是关节限位，
 腿会折到脚过髋而 48/48 全倒；`0.38` 超出平地所需，会把脚底翘起约 `17°` 而只靠内缘着地。
-当前站姿与增益仍是仿真假设，不含实机标定（见 [T030](docs/development.md#t030-两类执行器imu-标定配置原始轨迹对比报告和-dr-事件)）。
+当前站姿与增益仍是仿真假设，不含实机标定（实机标定归 T030，验收条件见
+[T022–T031 验收表](docs/archive/development_tasks.md#t022t031-后续任务的产物与验收)）。
 
 XML 提供 `imu_ang_vel`、`imu_lin_vel`、`imu_accel`、`imu_upvector` 和 `root_angmom`，
 场景注册名带 `robot/` 前缀。读数为理想值，IMU 安装位姿为占位配置；
 `imu_lin_vel` 和 `root_angmom` 在本机无对应实机传感器，只用于 critic 或奖励。
-传感器语义与观测边界见 [IMU 说明](docs/development.md#t037-在-xml-中声明-imu-参考点与内置传感器)。
+传感器语义与观测边界见 [IMU 说明](docs/archive/development_tasks.md#t037-在-xml-中声明-imu-参考点与内置传感器)。
 
 ## 在场景中使用
 
@@ -135,7 +223,7 @@ XML 提供 `imu_ang_vel`、`imu_lin_vel`、`imu_accel`、`imu_upvector` 和 `roo
 from mjlab.scene import SceneCfg
 from mjlab.terrains import TerrainEntityCfg
 
-from ht_microduck.robots import get_ht_microduck_robot_cfg
+from ht_microduck.robot.ht_microduck_constants import get_ht_microduck_robot_cfg
 
 robot_cfg = get_ht_microduck_robot_cfg()
 scene_cfg = SceneCfg(
@@ -147,20 +235,23 @@ scene_cfg = SceneCfg(
 
 该示例只创建配置。运行动态控制前，需要通过执行器的 startup 事件或
 `sim.expand_model_fields(...)` 为各环境分配独立模型字段；正式检查工具已处理。
-接入方法见 [3532 NT-PD 说明](src/ht_microduck/actuators/HTDW_3532_02_DNE/params/README.md)
-和 [HD1910 执行器说明](src/ht_microduck/actuators/HD_1910_C001/README.md)。
+接入方法见 [3532 NT-PD 说明](src/ht_microduck/actuator/HTDW_3532_02_DNE/params/README.md)
+和 [HD1910 执行器说明](src/ht_microduck/actuator/HD_1910_C001/README.md)。
 
 ## 目录与文档
 
 ```text
 HT_microduck_lab/
 ├── src/ht_microduck/
-│   ├── robots/ht_microduck/    # 整机配置、MJCF 与 mesh
-│   └── actuators/             # 3532 NT-PD、HD1910 BAM 与参数来源
+│   ├── robot/                 # 整机配置、MJCF 与 mesh
+│   ├── actuator/              # 3532 NT-PD、HD1910 BAM 与参数来源
+│   └── tasks/                 # 任务注册表、契约与速度任务配置
+├── rsl_rl/                    # rsl-rl-lib 5.4.2 完整副本（训练实际代码）
 ├── tools/                     # 环境安装、模型与 GPU 专项检查
 ├── tests/                     # 正式自动化测试
-├── docs/                      # 安装、开发任务、设计与审查记录
+├── docs/                      # 安装、流程、设计、审查与历史归档
 ├── Makefile                   # 统一检查入口
+├── setup.sh                   # 一键准备 uv、Python 与 .venv
 ├── pyproject.toml             # 包元数据与依赖声明
 └── uv.lock                    # 依赖锁文件
 ```
@@ -168,12 +259,14 @@ HT_microduck_lab/
 | 文档 | 内容 |
 |---|---|
 | [安装与环境验证](docs/setup.md) | 环境要求、CUDA 后端选择、依赖同步和排错 |
-| [开发流程与任务](docs/development.md) | 当前任务、阶段依赖、验收条件和运行证据 |
-| [项目开发约定](AGENTS.md) | 仓库约束、模块边界、产物管理和交付要求 |
+| [阶段与任务记录](docs/development.md) | 既有任务、阶段依赖和必要结果索引 |
+| [项目开发约定](AGENTS.md) | 仓库约束、语言与代码风格、产物管理和交付要求 |
+| [开发工作流设计](docs/development_workflow.md) | 开发步骤、模块边界、复现、训练验证与交付规则 |
 | [协作与审查规范](docs/collaboration_review.md) | 并发分工、集成和独立复核 |
+| [任务条目归档](docs/archive/development_tasks.md) / [完成记录归档](docs/archive/development_records.md) | 已结束任务的目标、验收与当时结论 |
 | [3532 执行器设计](docs/design/htdw3532_nt.md) | NT 曲线、原生 PD、接口及验证依据 |
 
-参与开发前请先阅读开发流程与项目约定，按任务表推进；具体状态与下一步安排以开发文档为准。
-当前下一项是 T038（HOME 站姿与默认增益），之后是 T022（控制/观测契约）与 T023（平地速度任务），
-依据是 [T041 的复核结论](docs/development.md#t041-对照三个参考项目复核下一步)。
-Git 基线与最小场景已按 T001、T002 关闭，不再是后续任务的前置。
+参与开发前请先阅读开发工作流与项目约定；小修改直接实施，已登记任务按原条目维护。
+**当前任务状态与下一步安排只以[开发文档的任务表](docs/development.md)为准**，本页不复述。
+T022–T026 已把任务契约、平地速度任务与 RSL-RL 训练链路依次接通；短跑只证明链路可用，
+不代表策略已学会行走。

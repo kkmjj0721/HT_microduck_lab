@@ -17,11 +17,11 @@ from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
 from mjlab.scene import Scene, SceneCfg
 from mjlab.sim import MujocoCfg, Simulation, SimulationCfg
 
-from ht_microduck.actuators.HD_1910_C001.friction_dr_bam import FrictionDRBamActuator
-from ht_microduck.actuators.HD_1910_C001.model import compute_motor_torque
-from ht_microduck.actuators.HTDW_3532_02_DNE import HTDW3532Actuator
-from ht_microduck.actuators.HTDW_3532_02_DNE.model import clip_nt_torque
-from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
+from ht_microduck.actuator.HD_1910_C001.friction_dr_bam import FrictionDRBamActuator
+from ht_microduck.actuator.HD_1910_C001.model import compute_motor_torque
+from ht_microduck.actuator.HTDW_3532_02_DNE import HTDW3532Actuator
+from ht_microduck.actuator.HTDW_3532_02_DNE.model import clip_nt_torque
+from ht_microduck.robot.ht_microduck_constants import (
     BRUSHLESS_ACTUATOR_CFG,
     BRUSHLESS_JOINT_NAMES,
     JOINT_NAMES,

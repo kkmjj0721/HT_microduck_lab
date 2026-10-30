@@ -5,7 +5,7 @@ import time
 
 import mujoco
 
-from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
+from ht_microduck.robot.ht_microduck_constants import (
     JOINT_NAMES,
     JOINT_TO_MOTOR_MODEL,
     MJCF_PATH,

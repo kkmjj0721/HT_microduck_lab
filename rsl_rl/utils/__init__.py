@@ -5,10 +5,6 @@
 
 """Helper functions."""
 
-from .. import _fallback
-
-__path__ = _fallback.extend(__file__, __path__)
-
 from .log_writer import LogWriter
 from .neptune_log_writer import NeptuneLogWriter
 from .utils import (

@@ -11,10 +11,10 @@ import torch
 from mjlab.actuator.actuator import ActuatorCmd
 from mjlab.entity import Entity, EntityArticulationInfoCfg, EntityCfg
 
-from ht_microduck.actuators import FrictionDRBamActuatorCfg
-from ht_microduck.actuators.HD_1910_C001.model import load_hd1910_parameters
-from ht_microduck.actuators.HTDW_3532_02_DNE.nt_actuator import HTDW3532ActuatorCfg
-from ht_microduck.robots.ht_microduck.ht_microduck_constants import (
+from ht_microduck.actuator import FrictionDRBamActuatorCfg
+from ht_microduck.actuator.HD_1910_C001.model import load_hd1910_parameters
+from ht_microduck.actuator.HTDW_3532_02_DNE.nt_actuator import HTDW3532ActuatorCfg
+from ht_microduck.robot.ht_microduck_constants import (
     BRUSHLESS_ACTUATOR_CFG,
     BRUSHLESS_ARMATURE,
     BRUSHLESS_JOINT_NAMES,

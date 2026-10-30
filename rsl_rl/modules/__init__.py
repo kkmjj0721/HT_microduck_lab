@@ -5,10 +5,6 @@
 
 """Building blocks for neural models."""
 
-from .. import _fallback
-
-__path__ = _fallback.extend(__file__, __path__)
-
 from .cnn import CNN
 from .distribution import BetaDistribution, Distribution, GaussianDistribution, HeteroscedasticGaussianDistribution
 from .mlp import MLP
