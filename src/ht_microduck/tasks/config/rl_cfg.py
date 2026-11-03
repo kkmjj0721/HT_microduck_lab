@@ -127,6 +127,16 @@ SitStandRlCfg = RslRlOnPolicyRunnerCfg(
     max_iterations=15_000,
 )
 
+# 前坐任务只改变任务目标与日志归属，网络和PPO沿用官方坐站配方，配置对象保持独立。
+SitStandForwardRlCfg = deepcopy(SitStandRlCfg)
+SitStandForwardRlCfg.experiment_name = "flat_sitstand_forward"
+SitStandForwardRlCfg.run_name = "sitstand_forward_base_v3"
+
+# v4使用相同网络与PPO，以独立任务和目录保留v3对照。
+SitStandForwardV4RlCfg = deepcopy(SitStandForwardRlCfg)
+SitStandForwardV4RlCfg.experiment_name = "flat_sitstand_forward_v4"
+SitStandForwardV4RlCfg.run_name = "forward_v4_hold"
+
 VelStandRlCfg = RslRlOnPolicyRunnerCfg(
     actor=RslRlModelCfg(
         hidden_dims=(512, 256, 128),

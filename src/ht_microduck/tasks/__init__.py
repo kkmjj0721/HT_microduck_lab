@@ -13,6 +13,12 @@ from mjlab.tasks.registry import register_mjlab_task
 
 from ht_microduck.tasks import contract as C
 from ht_microduck.tasks.config.flat_sitstand_env_cfg import make_sitstand_env_cfg
+from ht_microduck.tasks.config.flat_sitstand_forward_env_cfg import (
+    make_sitstand_forward_env_cfg,
+)
+from ht_microduck.tasks.config.flat_sitstand_forward_v4_env_cfg import (
+    make_sitstand_forward_v4_env_cfg,
+)
 from ht_microduck.tasks.config.flat_standup_env_cfg import make_standup_env_cfg
 from ht_microduck.tasks.config.flat_velocity_env_cfg import make_flat_velocity_env_cfg
 from ht_microduck.tasks.config.flat_velocity_head_env_cfg import (
@@ -21,11 +27,14 @@ from ht_microduck.tasks.config.flat_velocity_head_env_cfg import (
 from ht_microduck.tasks.config.flat_velstand_env_cfg import make_velstand_env_cfg
 from ht_microduck.tasks.config.rl_cfg import (
     FlatVelocityRlCfg,
+    SitStandForwardRlCfg,
+    SitStandForwardV4RlCfg,
     SitStandRlCfg,
     StandUpRlCfg,
     VelocityHeadRlCfg,
     VelStandRlCfg,
 )
+from ht_microduck.tasks.rl.forward_runner import ForwardCurriculumOnPolicyRunner
 from ht_microduck.tasks.rl.runner import (
     OfficialTaskOnPolicyRunner,
     VelocityHeadOnPolicyRunner,
@@ -35,6 +44,8 @@ FLAT_VELOCITY_TASK_ID = "HtDuck-Flat-Velocity"
 FLAT_VELOCITY_HEAD_TASK_ID = "HtDuck-Flat-Velocity-Head"
 FLAT_STANDUP_TASK_ID = "HtDuck-Flat-StandUp"
 FLAT_SITSTAND_TASK_ID = "HtDuck-Flat-SitStand"
+FLAT_SITSTAND_FORWARD_TASK_ID = "HtDuck-Flat-SitStand-Forward"
+FLAT_SITSTAND_FORWARD_V4_TASK_ID = "HtDuck-Flat-SitStand-Forward-V4"
 FLAT_VELSTAND_TASK_ID = "HtDuck-Flat-VelStand"
 FLAT_SITSTAND_UNBOUNDED_TASK_ID = "HtDuck-Flat-SitStand-Unbounded"
 FLAT_VELSTAND_UNBOUNDED_TASK_ID = "HtDuck-Flat-VelStand-Unbounded"
@@ -72,11 +83,27 @@ register_mjlab_task(
 )
 
 register_mjlab_task(
+    task_id=FLAT_SITSTAND_FORWARD_TASK_ID,
+    env_cfg=make_sitstand_forward_env_cfg(),
+    play_env_cfg=make_sitstand_forward_env_cfg(play=True),
+    rl_cfg=SitStandForwardRlCfg,
+    runner_cls=OfficialTaskOnPolicyRunner,
+)
+
+register_mjlab_task(
     task_id=FLAT_VELSTAND_TASK_ID,
     env_cfg=make_velstand_env_cfg(),
     play_env_cfg=make_velstand_env_cfg(play=True),
     rl_cfg=VelStandRlCfg,
     runner_cls=OfficialTaskOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id=FLAT_SITSTAND_FORWARD_V4_TASK_ID,
+    env_cfg=make_sitstand_forward_v4_env_cfg(),
+    play_env_cfg=make_sitstand_forward_v4_env_cfg(play=True),
+    rl_cfg=SitStandForwardV4RlCfg,
+    runner_cls=ForwardCurriculumOnPolicyRunner,
 )
 
 # 显式对照任务让官方训练与回放入口使用同一原目标语义，避免回放额外解析配置。
@@ -154,6 +181,8 @@ for _task_id, _env_cfg in (
     (FLAT_VELOCITY_HEAD_TASK_ID, make_flat_velocity_head_env_cfg(num_envs=1)),
     (FLAT_STANDUP_TASK_ID, make_standup_env_cfg(num_envs=1)),
     (FLAT_SITSTAND_TASK_ID, make_sitstand_env_cfg(num_envs=1)),
+    (FLAT_SITSTAND_FORWARD_TASK_ID, make_sitstand_forward_env_cfg(num_envs=1)),
+    (FLAT_SITSTAND_FORWARD_V4_TASK_ID, make_sitstand_forward_v4_env_cfg(num_envs=1)),
     (FLAT_VELSTAND_TASK_ID, make_velstand_env_cfg(num_envs=1)),
     (FLAT_SITSTAND_UNBOUNDED_TASK_ID, make_sitstand_env_cfg(num_envs=1, bound_targets=False)),
     (FLAT_VELSTAND_UNBOUNDED_TASK_ID, make_velstand_env_cfg(num_envs=1, bound_targets=False)),
@@ -163,6 +192,8 @@ del _task_id, _env_cfg
 
 __all__ = [
     "FLAT_SITSTAND_TASK_ID",
+    "FLAT_SITSTAND_FORWARD_TASK_ID",
+    "FLAT_SITSTAND_FORWARD_V4_TASK_ID",
     "FLAT_STANDUP_TASK_ID",
     "FLAT_VELOCITY_HEAD_TASK_ID",
     "FLAT_VELOCITY_TASK_ID",

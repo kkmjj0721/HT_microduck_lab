@@ -2263,3 +2263,10 @@ CUDA 12 构建要求 R525 及以上，仍需远端实际 GPU/JIT 验证。
 验收：CPU边界与配置隔离、官方CLI对照入口、真实GPU与旧检查点对照、两个各至少600秒的
 采样/PPO更新及新环境恢复、文档/完整检查和独立审查。技能收敛、教师蒸馏和部署导出另行验收。
 修改前源码与Git状态保存在`logs/action_bounds_20261030/validation/`，原训练产物保留。
+
+
+### T059 参考官方新增向前收腿的独立 SitStand 任务
+
+新增独立的`HtDuck-Flat-SitStand-Forward`，按官方空间意图验证HT前坐参考姿态，
+接入注册、训练、回放、CPU/GPU检查和至少600秒的有界训练及恢复。
+原SitStand及其他任务保留，设计与验收见[同主题设计](../design/skill_task_migration.md#t059-独立的-ht-前收腿坐站任务)。

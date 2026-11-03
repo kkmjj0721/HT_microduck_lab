@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "mjlab_version": "1.6.0",
+  "joint_names": [
+    "r_hip_yaw_joint",
+    "r_hip_roll_joint",
+    "r_hip_pitch_joint",
+    "r_calf_joint",
+    "r_ankle_joint",
+    "l_hip_yaw_joint",
+    "l_hip_roll_joint",
+    "l_hip_pitch_joint",
+    "l_calf_joint",
+    "l_ankle_joint",
+    "neck_pitch_joint",
+    "head_pitch_joint",
+    "head_yaw_joint",
+    "head_roll_joint",
+    "mouth_joint"
+  ],
+  "model_fingerprint": {
+    "robot/ht_microduck/HT-DK_URDF.xml": "fd9ac9c357ceec991db9b8acae5464765e0840ab1e31908a75757948628fc1ad",
+    "robot/ht_microduck/assets/base_link.STL": "4368399968f91b0e78659288dd08ca8b14cf0582d768cc155974174822410352",
+    "robot/ht_microduck/assets/head_pitch_link.STL": "096a993b32c4d5e96d7e2c6d121b0caa5e0150e5ee6c08b8b541191529959a1c",
+    "robot/ht_microduck/assets/head_roll_link.STL": "ed2ae7948362b547afe3b042375b638e7b9663d91539d20fac12c7bbf92ab8b7",
+    "robot/ht_microduck/assets/head_yaw_link.STL": "d66ea0e0ebdec50d0914855c7ca9560fbb5a51d15b143e26e1c86fb09d391a64",
+    "robot/ht_microduck/assets/l_ankle_link.STL": "5dc2b3e02985785ec061a591d2ab7cc30f2dd07ce9f696e6c3f4dfaa6ebc5682",
+    "robot/ht_microduck/assets/l_calf_link.STL": "aca4b9145affe4a86b8edc2cad30bb59626c8b5648f3e11dd727bae09001345e",
+    "robot/ht_microduck/assets/l_hip_pitch_link.STL": "58264373a290c64cad2bac20409eeadadccb3ce82f19847ddd6e6a728f11e3a0",
+    "robot/ht_microduck/assets/l_hip_roll_link.STL": "4a2e4850c648f7e671bab1b3905d0ea10a44f6bcda33e91a7b205eb16bf15344",
+    "robot/ht_microduck/assets/l_hip_yaw_link.STL": "7ae41662cdd5dc525b3a23dd230eab54c5a24f14c6bf88bd03893bd20eff82fd",
+    "robot/ht_microduck/assets/mouth_link.STL": "2cebd22bb1011e8cb77c752b1574f04e110aca043f1973a43ded80fe4dacf871",
+    "robot/ht_microduck/assets/neck_pitch_link.STL": "bc642f8783de746fdd624fb86ace10cf3b3ec7bee5a1eee4ba6a6403c0a26aa4",
+    "robot/ht_microduck/assets/r_ankle_link.STL": "9e5a826b7bcf822fec4bdb6b4563018eea8ebc199aa0eec98d8a5387807d8b28",
+    "robot/ht_microduck/assets/r_calf_link.STL": "7bbf37cda31f013db74826426bfbba6f05c0a80e92553a4777d2ef0f2f241d66",
+    "robot/ht_microduck/assets/r_hip_pitch_link.STL": "3b1f276b5644722a5c9623440df303963449aa1eb425393d035ce8412f16d8b8",
+    "robot/ht_microduck/assets/r_hip_roll_link.STL": "13345232e5287886437a2a56c024c0bddc50bebf2e3e499e08376a7e42fbe4bc",
+    "robot/ht_microduck/assets/r_hip_yaw_link.STL": "197bf44e4e9be90d0b23089edb53cba231228a87cfe1f6143232a71258754de0",
+    "robot/ht_microduck_constants.py": "9ed5b32cbd4a96cdfda1e44aae239cddd6e1830b63376e7ae07feac83a50d34e",
+    "actuator/HD_1910_C001/__init__.py": "71291bd696c5e008d4210611b15bb60119d56bbae51f3cd9d7d230fd9c06e7f1",
+    "actuator/HD_1910_C001/bam_actuator.py": "70113de200a6578d483a8fb71db4215913539db912e34fd68860a84c91fcc882",
+    "actuator/HD_1910_C001/friction_dr_bam.py": "02ded67527b0c737e8c0f5ff11f3f4959ec5b771d43b524256aeabbb91ce3863",
+    "actuator/HD_1910_C001/model.py": "83e5673cd50c96211a2cb4489f2acae0a1567c1c21b0a80eabdbde0b13addf5f",
+    "actuator/HTDW_3532_02_DNE/__init__.py": "4b298383cb39158a030318251a64d3b20b40d361acc4075b4483082068e67cae",
+    "actuator/HTDW_3532_02_DNE/model.py": "a8d886585d6e7f36ce73738b1e348a44dc68009dd85e2f29c128a85a69894ad9",
+    "actuator/HTDW_3532_02_DNE/nt_actuator.py": "4d06e7770f563a36a38e93c65ee39f0be7d5c15598d5bc0d6de90e17a7fc2ece",
+    "actuator/__init__.py": "874059f3e5c3d6e228fafbf4ad0de8de122c18c6a8c953bbab17689aa1359491",
+    "actuator/HD_1910_C001/params/feetech_hd1910_7_4V_m6.json": "81a441fb921130bcc9bcfbd9ee0c77e3c38d9ab758bc7e0559fb029c436355ba",
+    "actuator/HTDW_3532_02_DNE/params/htdw_3532_24v.json": "bb0e49d6c4f5fb0c4921f9ad9a6c016d9b83a58c989ae357a8878ceb7aca40aa"
+  },
+  "initialization": "physical_state_current_targets_native_reset",
+  "revalidation": [
+    {
+      "kind": 0,
+      "sample_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "protocol": "fixed_target_hold",
+      "seconds": 5.0,
+      "valid_frames_per_sample": [
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0
+      ],
+      "policy_control": false
+    },
+    {
+      "kind": 1,
+      "sample_ids": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "protocol": "fixed_target_hold",
+      "seconds": 5.0,
+      "valid_frames_per_sample": [
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0,
+        250.0
+      ],
+      "policy_control": false
+    }
+  ],
+  "source": {
+    "tool": "tools/collect_forward_states.py",
+    "tool_sha256": "8c0c5e247a2c5d00cfd9e48734963f59056959cef470b43b89ee041139e6d647",
+    "initializer_sha256": "78ab731104f2f3be31967ec81fd50969defbd8b290e5069a29df24a1e0746b10",
+    "seed": 0,
+    "num_envs": 8,
+    "control_dt": 0.02,
+    "physics_dt": 0.005,
+    "settling_seconds": 8.0,
+    "nominal_model": true
+  },
+  "scope": "Simulation initialization data; fixed-target validation is not learned-policy acceptance or hardware validation."
+}

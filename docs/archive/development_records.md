@@ -1228,6 +1228,80 @@ receivedWebviewMessage=false timeoutMs=30000`，且没有任何 `React root rend
 `detected unresponsive`，再查 `extensions.json` 是否有指向已删目录或版本不兼容的条目，
 最后才怀疑扩展自身。这些改动均属用户级配置，不随仓库管理。
 
+2026 年 10 月 31 日再次复发：前三处修复（软件渲染、180 s 超时、清理扩展注册表）都仍在，
+但面板又打不开。这次 `extensions.json` 已无失效条目，`main.log` 显示窗口
+`CodeWindow: detected unresponsive` 卡住约 26 s，并伴随 3 次
+`Extension host with pid ... exited`，Codex 扩展在 10:51:08 随宿主一起被终止。
+
+卡顿样本指向 `manasxx.background-cover-3.7.2`：`unresponsive samples` 中出现
+`.../out/vs/workbench/js-background-cover.js?t=...`，与 xterm 同时占用主线程。
+该扩展在 `settings.json` 中 `background.enabled: true`，会在主线程持续重绘背景。
+
+处理：`settings.json` 设 `background.enabled: false`（备份 `settings.json.dsh-backup2`）。
+验证：重启后会话 `20261031T105609` 中 window1 `app routes mounted after 53560ms`，
+`detected unresponsive` 为 0，扩展宿主只启动 1 次。
+
+结论补充：本机是"多个独立故障叠加"的典型场景，每修好一层都会露出下一层，
+排查必须同时看三处——`main.log` 的未响应/宿主重启、`unresponsive samples` 里的具体栈、
+以及 `exthost/openai.chatgpt/Codex.log` 是否出现过 `React root render`。
+只看到"没有超时日志"就下结论会漏掉真实原因；没有 `React root render` 说明
+webview 从未被创建，应优先查宿主与主线程，而不是继续调超时预算。
+
+2026 年 10 月 31 日第二轮（按用户要求彻底删除背景扩展）：
+
+- 背景扩展 `manasxx.background-cover-3.7.2` 不只是普通插件，它会改写 VS Code 安装目录的
+  `.../out/vs/workbench/workbench.desktop.main.js`，注入一段
+  `/*ext-backgroundCover-start*/` … `/*ext-backgroundCover-end*/` 引导代码，
+  用于加载 `js-background-cover.js` 与 182 个 `css-background-cover.*.css`。
+  只删扩展目录而不清注入，启动时仍会去找已删文件。
+- 实际清理范围：扩展目录、`CachedExtensionVSIXs/manasxx.background-cover-3.7.2`、
+  `.obsolete` 条目、`workbench.desktop.main.js` 中 6196 字符注入块（备份
+  `workbench.desktop.main.js.dsh-backup`）、182 个 css 与 1 个 js 缓存、
+  `settings.json` 的 `background.enabled`、`state.vscdb` 中 4 条相关记录
+  （备份 `state.vscdb.dsh-backup`，188→184 行，`pragma integrity_check` 为 ok）。
+- 清理后仍未渲染，继续定位到真正的阻塞点：`settings.json` 里
+  `http.proxySupport` 默认为 `override`，VS Code 走系统代理
+  （GNOME `manual`，`127.0.0.1:7897`）。当时代理节点已失效，HTTPS 全部 TLS 失败
+  （`SSL routines::unexpected eof while reading`，`https://www.google.com` 经代理也是 000，
+  `chatgpt.com` 被解析到 Facebook 的 IP），主线程在卡住的请求上出现
+  `CodeWindow: detected unresponsive`，webview 因此始终没有创建。
+- 处理：`settings.json` 设 `http.proxySupport: "off"`（备份 `settings.json.dsh-backup3`）。
+  验证：干净重启后会话 `20261031T120313` 中 window1
+  `app routes mounted after 53330ms`，`detected unresponsive` 为 0。
+- 隔离对照（两次都用同一份 `workbench.desktop.main.js` 与同一扩展目录）：
+  带 `http.proxySupport:"off"` 的隔离实例 53996 ms 正常挂载，
+  不带该项的隔离实例卡在 `detected unresponsive` 且无 `React root render`。
+  据此确认 workbench 注入的移除本身没有破坏 VS Code。
+
+注意事项：`http.proxySupport: "off"` 会让 VS Code 自身及扩展不再使用系统代理，
+若之后依赖代理访问外网，需要重新打开该项或改用能正常工作的代理节点。
+该机当前代理节点失效是独立问题，本次未修复，仅绕开。
+
+2026 年 11 月 1 日复发：这次的直接原因是代理进程没起来，与 Codex 和扩展都无关。
+
+- 现象：Codex 面板又打不开，`main.log` 有 `detected unresponsive` 与 2 次
+  `Extension host with pid ... exited`，各窗口 `Codex.log` 均无 `React root render`。
+- 定位：`ss -tln` 显示 7897/7890/9090 全部无监听，`gsettings get
+  org.gnome.system.proxy mode` 已是 `'none'`，只有 `clash-verge-service` 守护进程在跑，
+  图形端 `clash-verge` 未启动。国内站点（`https://www.baidu.com`）200，
+  `api.github.com` 直连与经代理均 000，即外网出口整体不可用。
+  渲染层报 `[DefaultAccount] request: error TypeError: Failed to fetch
+  https://api.github.com/copilot_int...` 与连串"出现未知错误"，都是外网不通的派生现象。
+- 处理：启动 `/usr/bin/clash-verge`（7897 恢复监听，`api.github.com` 200、
+  `chatgpt.com/backend-api/me` 401 为正常的未登录响应），
+  把 `http.proxySupport` 由上一轮临时值 `"off"` 改回 `"override"`
+  （备份 `settings.json.dsh-backup4`），并把 GNOME 系统代理恢复为
+  `manual` + `127.0.0.1:7897`（上一轮排查时被置成了 `none`）。
+- 验证：会话 `20261101T115425` 中 window1 `app routes mounted after 9484ms`，
+  同时出现 `result=succeeded` 与 `authenticatedAccountPresent=true`，
+  `detected unresponsive` 为 0。
+
+结论：前四层（软件渲染、180 s 超时、扩展注册表、背景扩展及其 workbench 注入）
+属本地配置缺陷，已修净；但"外网出口是否可用"是独立变量，代理进程未启动或
+系统代理被置为 `none` 时，Codex 同样表现为面板打不开且无 `React root render`。
+以后遇到同一症状，先花十秒做这两项检查再动配置：
+`ss -tln | grep 789` 与 `gsettings get org.gnome.system.proxy mode`。
+
 ### 2026 年 10 月 27 日 T022–T026 任务环境与本地训练链路
 
 按用户要求"参考官方的项目做任务环境（任务/行动/奖励），无 PPO、网络、存储、Runner"落地首版：

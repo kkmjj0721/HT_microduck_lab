@@ -16,7 +16,7 @@ src/ht_microduck/
   tasks/                  # 任务注册、契约，以及按职责分层的配置与 MDP
     __init__.py           # register_mjlab_task（经 mjlab.tasks entry point 自动发现）
     contract.py           # 各任务时序/动作/观测契约
-    config/               # 五个 *_env_cfg.py、rl_cfg.py 与地形配置
+    config/               # 各任务环境、RL 与地形配置
     mdp/                  # 官方 MDP 与独立保留的 VelStand 实现
     rl/                   # 任务检查点恢复与数值适配
   robot/
@@ -118,7 +118,9 @@ uv run --no-sync duck-train HtDuck-Flat-Velocity --env.scene.num-envs 16 \
 | `HtDuck-Flat-Velocity` | 官方平地速度与随机头颈姿态跟踪 |
 | `HtDuck-Flat-Velocity-Head` | 与 Velocity 使用同一官方配方，保留独立任务 ID 与日志 |
 | `HtDuck-Flat-StandUp` | 从站、坐、前躺与后躺初态起立，并学习躯干指令 |
-| `HtDuck-Flat-SitStand` | 受令坐站切换 |
+| `HtDuck-Flat-SitStand` | 受令坐站切换（原有后收腿目标） |
+| `HtDuck-Flat-SitStand-Forward` | 受令站立／前收腿坐下，独立姿态目标与日志 |
+| `HtDuck-Flat-SitStand-Forward-V4` | 独立初态课程，默认先学习前坐与站立保持；原Forward保留v3对照 |
 | `HtDuck-Flat-VelStand` | 行走、站立与恢复技能组合 |
 | `HtDuck-Flat-SitStand-Unbounded` | 坐站原始动作目标语义的对照 |
 | `HtDuck-Flat-VelStand-Unbounded` | 组合任务原始动作目标语义的对照 |
@@ -138,19 +140,53 @@ uv run --no-sync duck-play HtDuck-Flat-Velocity --agent zero --num-envs 1 --view
 uv run --no-sync duck-play HtDuck-Flat-Velocity-Head --agent trained --checkpoint-file .../model_250.pt
 ```
 
-除 VelStand 外，现有任务的奖励、重置与课程采用官方 `microduck_rl@bae39f59` 的配方，机器人相关姿态与高度
+前坐任务沿用官方坐站命令接口，采用HT前收脚姿态及独立的基础奖励、限位重置和验收。
+基础阶段保留小范围头部指令与初态域随机化，关闭interval推扰和逐迭代强化课程；
+先学会完整坐站，再加入大幅头部/推扰强化。受HT膝行程限制，并非精确复制官方腿形。
+训练目录为`logs/rsl_rl/flat_sitstand_forward/`，默认新运行名`sitstand_forward_base_v3`；
+采用联合最差关节与全腿误差的非负姿态奖励、稠密高度信号及适中的直立奖励。
+完整策略坐站尚未通过行为验收。
+奖励语义已改变，应从零训练，不续训旧前坐或SitStand优化器。修复依据与验证边界见
+[前坐修复设计](docs/design/skill_task_migration.md#t060-前坐失败后的任务修复)。
+
+```bash
+uv run --no-sync duck-train HtDuck-Flat-SitStand-Forward --agent.seed 0
+uv run --no-sync duck-play HtDuck-Flat-SitStand-Forward --agent trained --checkpoint-file .../model_250.pt
+
+# 验收实际策略的站立→前坐→站立，失败退出非零；输出必须为新的项目内目录
+uv run --no-sync python -B tests/test_sitstand_forward_behavior.py --checkpoint-file .../model_250.pt --output logs/forward_behavior/new_run
+```
+
+v4从零训练，默认`hold`阶段匹配初态与命令；头部为零指令，全部动作仍由策略输出。
+训练目录为`logs/rsl_rl/flat_sitstand_forward_v4/`，默认运行名`forward_v4_hold`。
+阶段、初态库指纹和归一化/优化器随检查点保存；升级需要对应检查点的三种子独立报告。
+初态库随包提供经真实执行器采集并复验的坐/站端点；后续`sit/rise`须补充相同语义下复验的真实过渡样本，
+缺少样本时会明确报错。阶段接口、验收门槛和参考依据见
+[v4课程设计](docs/design/skill_task_migration.md#2026-11-03-v4-初态课程与独立保持验收)。
+
+```bash
+uv run --no-sync duck-train HtDuck-Flat-SitStand-Forward-V4 --agent.seed 0
+
+# 显式有界训练：至少600秒实际采样和PPO，随后完整恢复；不等于策略行为通过
+uv run --no-sync python -B tests/test_forward_v4_training.py train --num-envs 512 --seed 0 --output logs/forward_v4/new_hold
+
+# 每个种子分别检查前坐和站立是否连续保持5秒；输出必须为新目录
+uv run --no-sync python -B tests/test_forward_v4_behavior.py --checkpoint-file .../model_1000.pt --seed 0 --output logs/forward_v4/hold_seed0
+```
+
+除 VelStand 和前坐基础变体外，现有任务的奖励、重置与课程采用官方 `microduck_rl@bae39f59` 的配方，机器人相关姿态与高度
 使用 HT 仿真实测值。两个 Velocity 任务都训练随机头颈指令，躯干槽位保留小范围随机输入且
 跟踪奖励为零；StandUp 逐步加入前后躺初态与躯干 z/roll/pitch 跟踪；SitStand 按官方节奏
 训练受令坐站。对应关系和必要适配见[任务对齐设计](docs/design/skill_task_migration.md#t055-除-velstand-外逐项对齐官方任务)。
 
-四个对齐任务都是 61 维 actor、14 维动作、`1.0 rad/action`、50 Hz（物理步 `.005 s`，
+上述任务（含前坐基础变体）的接口都是 61 维 actor、14 维动作、`1.0 rad/action`、50 Hz（物理步 `.005 s`，
 decimation=4）；Velocity critic 为 76 维，StandUp/SitStand 为 74 维。VelStand 保留原有
 61/64/14与`.002 s × 10`；恢复窗口、初态概率和身体跟踪已按[恢复修复设计](docs/design/skill_task_migration.md#t057-官方恢复机制与-ht-坐站高度修复)修正，专家蒸馏另阶段实施。旧 64 维 critic 检查点、旧动作缩放和旧观测顺序不能用于
 新配方的完整恢复，须使用对应配置重新训练。短跑只验证运行链路，不代表已经学会各项技能。
 
 SitStand、VelStand 默认在扣除编码器偏置后，将绝对关节目标限制在模型的逐关节硬范围内；
 14维动作仍为`HOME + 1.0 × action`，上一动作观测和动作变化奖励仍使用策略原值。
-膝关节坐姿需要约1.6 rad偏移，因此没有统一裁剪原始动作至±1。新增的
+原SitStand膝关节坐姿需要约1.6 rad偏移，前坐任务髋关节需要约2.4 rad偏移，因此没有统一裁剪原始动作至±1。新增的
 `Episode_Metrics/requested_target_outside_limits`、`applied_target_outside_limits`、
 `target_clip_fraction`、`actuator_saturation_fraction`和`actuator_saturation_duration`
 分别记录请求越界、实际下发越界、限幅比例、控制帧饱和比例和回合最长连续饱和秒数；指标不参与奖励。

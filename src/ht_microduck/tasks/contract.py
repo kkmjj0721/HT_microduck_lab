@@ -257,6 +257,8 @@ TASK_CRITIC_OBSERVATION_DIMS: dict[str, int] = {
     "HtDuck-Flat-Velocity-Head": 76,
     "HtDuck-Flat-StandUp": 74,
     "HtDuck-Flat-SitStand": 74,
+    "HtDuck-Flat-SitStand-Forward": 74,
+    "HtDuck-Flat-SitStand-Forward-V4": 74,
     "HtDuck-Flat-VelStand": CRITIC_OBSERVATION_DIM,
     "HtDuck-Flat-SitStand-Unbounded": 74,
     "HtDuck-Flat-VelStand-Unbounded": CRITIC_OBSERVATION_DIM,
@@ -267,7 +269,7 @@ def critic_observation_terms(task_id: str) -> tuple[str, ...]:
     """返回各任务有序的 critic 项，包括任务对应的足端特权输入。"""
     if task_id in ("HtDuck-Flat-VelStand", "HtDuck-Flat-VelStand-Unbounded"):
         return ACTOR_OBSERVATION_TERMS + CRITIC_EXTRA_TERMS
-    if task_id in ("HtDuck-Flat-StandUp", "HtDuck-Flat-SitStand", "HtDuck-Flat-SitStand-Unbounded"):
+    if task_id in ("HtDuck-Flat-StandUp", "HtDuck-Flat-SitStand", "HtDuck-Flat-SitStand-Unbounded", "HtDuck-Flat-SitStand-Forward", "HtDuck-Flat-SitStand-Forward-V4"):
         return tuple(name for name in OFFICIAL_CRITIC_TERMS if name != "foot_height")
     if task_id in TASK_CRITIC_OBSERVATION_DIMS:
         return OFFICIAL_CRITIC_TERMS
