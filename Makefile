@@ -5,6 +5,7 @@ CHECK_LOCK = $(UV) lock --check --offline --python 3.12
 CHECK_LINT = $(RUN) ruff check src tools tests
 CHECK_TEST = PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(RUN) python -B -m pytest -q tests --basetemp="$$check_dir/pytest" -o "cache_dir=$$check_dir/pytest-cache"
 CHECK_MODEL = $(RUN) python -B tools/check_robot.py
+CHECK_MODELS = $(CHECK_MODEL); $(CHECK_MODEL) --robot cyberduck-v2
 CHECK_DOCS = $(RUN) python -B tools/check_docs.py
 CHECK_DIFF = git diff --check && git diff --cached --check
 
@@ -32,14 +33,14 @@ help:
 	  'make check       检查锁文件、代码、测试、模型、文档和差异空白' \
 	  'make lint        Ruff 代码检查' \
 	  'make test        运行项目测试，隔离自动加载的外部插件' \
-	  'make model       模型编译与关节映射检查' \
+	  'make model       两种机器人的模型编译与关节映射检查' \
 	  'make docs        检查文档链接、锚点与任务表一致性' \
 	  'make lock-check  离线检查锁文件一致性' \
 	  'make viewer      打开静态模型预览，需要图形桌面' \
 	  '检查产物按次保存于 .artifacts/checks/run-*，任务结束后按实际路径清理'
 
 check:
-	$(call run_check,$(CHECK_LOCK); $(CHECK_LINT); $(CHECK_TEST); $(CHECK_MODEL); $(CHECK_DOCS); $(CHECK_DIFF))
+	$(call run_check,$(CHECK_LOCK); $(CHECK_LINT); $(CHECK_TEST); $(CHECK_MODELS); $(CHECK_DOCS); $(CHECK_DIFF))
 
 lint:
 	$(call run_check,$(CHECK_LINT))
@@ -48,7 +49,7 @@ test:
 	$(call run_check,$(CHECK_TEST))
 
 model:
-	$(call run_check,$(CHECK_MODEL))
+	$(call run_check,$(CHECK_MODELS))
 
 docs:
 	$(call run_check,$(CHECK_DOCS))

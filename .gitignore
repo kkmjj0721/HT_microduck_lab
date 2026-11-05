@@ -6,7 +6,7 @@ __pycache__/
 /build/
 /dist/
 
-# 检查、仿真与编译缓存；专项检查统一写入 .artifacts/
+# 检查、仿真与编译缓存；临时测试脚本与验证产物统一写入 .artifacts/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -15,6 +15,18 @@ __pycache__/
 /.torchinductor_cache/
 /.artifacts/
 /MUJOCO_LOG.TXT
+
+# 测试工具缓存、覆盖率数据及报告；正式测试源码与测试数据保留
+.hypothesis/
+.tox/
+.nox/
+/.coverage
+/.coverage.*
+/htmlcov/
+/coverage.xml
+/junit.xml
+/test-results/
+/test-reports/
 
 # 根目录的训练、评估及导出产物；源码与测试中的同名目录保留
 /outputs/
@@ -25,4 +37,13 @@ __pycache__/
 /exports/
 /videos/
 
-# tests/、docs/、模型资源与 uv.lock 均纳入版本控制
+# 本地工作文档及配图，含已有文档、模板与归档
+/docs/work/
+/docs/design/
+/docs/review/
+/docs/archive/
+/docs/development_workflow.md
+/docs/development.md
+/docs/collaboration_review.md
+
+# 正式测试、正式技术文档、模型资源与 uv.lock 保持可跟踪

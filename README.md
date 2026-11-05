@@ -8,6 +8,7 @@ mjlab 负责仿真、场景和环境管理；执行器模型、任务注册与�
 官方 `mjlab` 入口，PPO、网络与 Runner 来自本仓库根目录的 `rsl_rl/`；`duck-train` 与
 `duck-play` 是其薄封装。训练只验证到"链路通、可恢复、可回放"，
 `duck-eval`/`duck-export` 属于后续任务。
+另提供 **CyberDuck V2** 的独立模型、mjlab 实体与静态预览；现有训练任务使用 HT Microduck。
 
 ## 目录结构
 
@@ -22,6 +23,8 @@ src/ht_microduck/
   robot/
     ht_microduck_constants.py   # 关节/电机分组/初态/执行器装配
     ht_microduck/               # HT-DK_URDF.xml 与 16 个 STL（数据目录）
+    cyberduck_v2_constants.py   # CyberDuck V2 关节、源电机与实体配置
+    cyberduck_v2/               # CyberDuck_V2.xml、来源清单与 20 个 STL
   actuator/                     # 3532 NT-PD 与 HD1910 BAM 模型及参数来源
   train_cli.py                  # duck-train → mjlab.scripts.train
   play_cli.py                   # duck-play  → mjlab.scripts.play
@@ -44,7 +47,7 @@ rsl_rl/                         # rsl-rl-lib 5.4.2 完整副本，训练实际�
 在仓库根目录运行：
 
 ```bash
-# 编译模型，核对关节、电机分组与模型质量
+# 编译两种机器人，核对关节、执行器映射与模型质量
 make model
 
 # 检查锁文件、代码、测试、模型、文档和 Git 差异空白
@@ -250,6 +253,45 @@ XML 提供 `imu_ang_vel`、`imu_lin_vel`、`imu_accel`、`imu_upvector` 和 `roo
 场景注册名带 `robot/` 前缀。读数为理想值，IMU 安装位姿为占位配置；
 `imu_lin_vel` 和 `root_angmom` 在本机无对应实机传感器，只用于 critic 或奖励。
 传感器语义与观测边界见 [IMU 说明](docs/archive/development_tasks.md#t037-在-xml-中声明-imu-参考点与内置传感器)。
+
+### CyberDuck V2
+
+[CyberDuck_V2.xml](src/ht_microduck/robot/cyberduck_v2/CyberDuck_V2.xml)
+及 20 个 STL 随包提供，源文件与导入差异记录在
+[来源清单](src/ht_microduck/robot/cyberduck_v2/source_manifest.json)。
+模型包含自由基座、19 个单轴关节，总质量约 **3.7032 kg**；
+其中 4 个滚轮通过软等式约束跟随踝关节，比例为 `1.210526`。
+机器人实体接入 **12 个无刷电机＋3 个舵机**，两踝控制速度，其余 13 个独立关节控制位置：
+
+| 执行器 | 关节 | 当前仿真配置 |
+|---|---|---|
+| HTDW-3532 NT-PD，10 路位置控制 | 双腿除踝部外 8 关节，以及 `neck_pitch_joint`、`head_pitch_joint` | `kp=10`、`kd=0.4`、限幅 `2 N·m`，沿用既有输出轴 NT 曲线与反射惯量 |
+| HTDW-3532，2 路速度控制 | `r_ankle_joint`、`l_ankle_joint` | `kp=0`、速度反馈增益 `0.4`、限幅 `2 N·m`，保留同一 NT 包络 |
+| HD1910 BAM，3 路 | `head_yaw_joint`、`head_roll_joint`、`mouth_joint` | `7.4 V`、`kp_fw=32`、限幅 `1.471 N·m`，关闭摩擦随机化 |
+
+三组均沿用 `0–3` 个物理步命令延迟。这些参数是复用的仿真默认值，尚非 CyberDuck 实机标定。
+两踝通过 `set_joint_velocity_target(..., joint_ids=踝关节索引)` 下发 rad/s 目标，局部轴正方向沿用模型；
+其余关节使用 `set_joint_position_target`。速度组关闭位置反馈，不主动回到初始踝角度。
+左右各两个滚轮保留从动，不单独配置执行器；滚轮仍参与运动、碰撞和约束受力。
+初态沿用源零位和 `0.252 m` 根高度，尚未验证稳定站立与策略效果。
+源 XML 原有两个踝部示例 motor 保持原样，实体装配时在内存中替换为上述混合驱动。
+
+```bash
+uv run --no-sync python -B tools/check_robot.py --robot cyberduck-v2
+
+# 有图形桌面时打开静态预览
+uv run --no-sync python -B tools/check_robot.py --robot cyberduck-v2 --viewer
+```
+
+场景通过
+[get_cyberduck_v2_robot_cfg()](src/ht_microduck/robot/cyberduck_v2_constants.py)
+获取独立配置；两种机器人可同时装入同一个 Scene。
+[运行时专项检查](tests/test_cyberduck_v2.py)使用 3 个环境、100 个物理步核对 13 路位置及 2 路速度目标、NT/BAM 限幅与局部重置，
+不启动训练；设置上方项目内临时与缓存路径后运行：
+
+```bash
+uv run --no-sync python -B tests/test_cyberduck_v2.py --device cuda:0
+```
 
 ## 在场景中使用
 

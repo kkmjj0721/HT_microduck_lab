@@ -1,0 +1,126 @@
+{
+  "source_directory": "/home/sunteng/Downloads/CyberDuck_V2/CyberDuck_V2",
+  "package": {
+    "name": "CyberDuck_V2",
+    "version": "1.0.0",
+    "license_declared": "BSD",
+    "license_note": "源 package.xml 自报 BSD，未提供具体版本与许可正文；作者及维护者为 TODO，本次不补造。"
+  },
+  "source_files": {
+    "package.xml": "01f88c380643c5ae03d3af09900cced2b302d9638ce044400be28a757a2794fa",
+    "xml/CyberDuck_V2.xml": "a22d4445983155b5c97f441927cf4c636c2b0bffb550bfa0637bcf7c48a8d0dd",
+    "urdf/CyberDuck_V2.urdf": "7e3b2c602c90c82a60183677273bdd408b6337bade162156c872d5d24677be4a"
+  },
+  "model_file": {
+    "path": "CyberDuck_V2.xml",
+    "sha256": "58c48863367320d27f226df48331cae20384a66c23e58d1b8fcecac1d3faa0f5"
+  },
+  "mesh_files": {
+    "assets/base_link.STL": {
+      "source_path": "meshes/base_link.STL",
+      "sha256": "3f4ba0d5eafdaf1fe01eaad2b2bc928a029fc79a3e55da36820757ef0ce793a7",
+      "size_bytes": 5482734
+    },
+    "assets/head_pitch_link.STL": {
+      "source_path": "meshes/head_pitch_link.STL",
+      "sha256": "bfc880d1b6919aa8a6483c3349da1dcea5397e6dc77df51133b9cc0ff039308b",
+      "size_bytes": 166684
+    },
+    "assets/head_roll_link.STL": {
+      "source_path": "meshes/head_roll_link.STL",
+      "sha256": "2bd63cf0fa436d936c2cdfc5a5fad350359823699b1fc536be26ed5a804c85ac",
+      "size_bytes": 4643284
+    },
+    "assets/head_yaw_link.STL": {
+      "source_path": "meshes/head_yaw_link.STL",
+      "sha256": "bafb3be51b0e89d45958668b63272f70dfd3054c053bc856889210df5be948fc",
+      "size_bytes": 1740384
+    },
+    "assets/l_ankle_link.STL": {
+      "source_path": "meshes/l_ankle_link.STL",
+      "sha256": "84298ad01935c4e16227b48c3101a05881e13a431a8b358d8e962f720483c0dd",
+      "size_bytes": 176484
+    },
+    "assets/l_calf_link.STL": {
+      "source_path": "meshes/l_calf_link.STL",
+      "sha256": "fb5275162777afcee9c5d488c53f305786d54033f66e053ec7239f427ff942e9",
+      "size_bytes": 1723784
+    },
+    "assets/l_hip_pitch_link.STL": {
+      "source_path": "meshes/l_hip_pitch_link.STL",
+      "sha256": "743df5f21dd8835d3ed6c9a816ebb90e2eb63acf257ab39ce97b66e367609795",
+      "size_bytes": 3153184
+    },
+    "assets/l_hip_roll_link.STL": {
+      "source_path": "meshes/l_hip_roll_link.STL",
+      "sha256": "5a678ebbbbf27e2e5b508cc14390dc5b5c94c4e2c87ed8fd3a046df0991e04a5",
+      "size_bytes": 154384
+    },
+    "assets/l_hip_yaw_link.STL": {
+      "source_path": "meshes/l_hip_yaw_link.STL",
+      "sha256": "2158152884c5678346bd605cb262eb5a2b407729b860aca1240b32391f959301",
+      "size_bytes": 1705884
+    },
+    "assets/l_roller_back_link.STL": {
+      "source_path": "meshes/l_roller_back_link.STL",
+      "sha256": "9c512c5b5934f35dc7926ae2d1aa33257933ff19cb45a6ad0bfa613d84a5e46e",
+      "size_bytes": 346384
+    },
+    "assets/l_roller_front_link.STL": {
+      "source_path": "meshes/l_roller_front_link.STL",
+      "sha256": "1a09e124981750f1d8f6a613f5574d49195f29c0b207256912ed95c8329ef425",
+      "size_bytes": 346384
+    },
+    "assets/mouth_link.STL": {
+      "source_path": "meshes/mouth_link.STL",
+      "sha256": "2f2482f81f33f426bcf944c790b5f36631c38b654aa0fe54240dd5dee65b505b",
+      "size_bytes": 60584
+    },
+    "assets/neck_pitch_link.STL": {
+      "source_path": "meshes/neck_pitch_link.STL",
+      "sha256": "d5cbf2f48b1437e45fc4d18f25843f8a13694015bb6d35b82afdabb136f36497",
+      "size_bytes": 3224584
+    },
+    "assets/r_ankle_link.STL": {
+      "source_path": "meshes/r_ankle_link.STL",
+      "sha256": "71dde4e09df1a2ce6971d0027e5029c9861d7e68da6e03ed73a5f4e8755f4482",
+      "size_bytes": 176484
+    },
+    "assets/r_calf_link.STL": {
+      "source_path": "meshes/r_calf_link.STL",
+      "sha256": "a23a8240576587f63e3ffd2de15e8cf436c3ca948764e69b16c3e67b14d9ecfa",
+      "size_bytes": 1723984
+    },
+    "assets/r_hip_pitch_link.STL": {
+      "source_path": "meshes/r_hip_pitch_link.STL",
+      "sha256": "02c1deb4493e5d934e234b0d0d4a81d0457c7c5b2466cfb77bb97a8c8b199b1c",
+      "size_bytes": 3153184
+    },
+    "assets/r_hip_roll_link.STL": {
+      "source_path": "meshes/r_hip_roll_link.STL",
+      "sha256": "dd8bfb0215ce78759089ef1076d039d408568cf6a35f23366e12e9b49fe759d2",
+      "size_bytes": 154384
+    },
+    "assets/r_hip_yaw_link.STL": {
+      "source_path": "meshes/r_hip_yaw_link.STL",
+      "sha256": "70a69882037235e970b80cee9c5c9df9c6af7dfe819844c79d718c1b792cff1c",
+      "size_bytes": 1706684
+    },
+    "assets/r_roller_back_link.STL": {
+      "source_path": "meshes/r_roller_back_link.STL",
+      "sha256": "50c8dc1267ae773b21706b853ae8a1dd1e540d5dcc2298c1ccb8d4439f3225e8",
+      "size_bytes": 346384
+    },
+    "assets/r_roller_front_link.STL": {
+      "source_path": "meshes/r_roller_front_link.STL",
+      "sha256": "89532567e14d605b66fc5e0b0087ff7a76cdda4b842de6437d82e36c0782ee76",
+      "size_bytes": 346384
+    }
+  },
+  "import_changes": [
+    "将 MJCF compiler.meshdir 从 ../meshes/ 改为同级 assets/；20 个 STL 逐字节复制。",
+    "移除尾部 setup scene 段的 statistic、visual、天空与地面资源、地面及灯光；场景由 mjlab 提供。",
+    "新增本地中文文件说明和版权声明，原始 MJCF 注释保留，行尾统一为 LF 并移除尾随空白。",
+    "机器人刚体、惯量、关节、碰撞体、四个 mimic 等式约束和两个踝部力矩 motor 均保留源定义。"
+  ]
+}
