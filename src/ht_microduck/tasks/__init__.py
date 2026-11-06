@@ -162,15 +162,22 @@ def _assert_cyberduck_v2_contract(env_cfg) -> None:
         raise ValueError(f"{prefix}: position or velocity action units changed")
     if not position.use_default_offset or not position.bound_targets:
         raise ValueError(f"{prefix}: position targets must use HOME and hard limits")
+    if not velocity.use_default_offset or velocity.clip != {".*": (-CV2.VELOCITY_TARGET_LIMIT, CV2.VELOCITY_TARGET_LIMIT)}:
+        raise ValueError(f"{prefix}: velocity targets must use the declared limits and zero HOME velocity")
     if env_cfg.sim.mujoco.timestep != CV2.PHYSICS_TIMESTEP or env_cfg.decimation != CV2.DECIMATION:
         raise ValueError(f"{prefix}: control period does not match the contract")
     for group, expected in (("actor", CV2.ACTOR_OBSERVATION_TERMS), ("critic", CV2.CRITIC_OBSERVATION_TERMS)):
         terms = env_cfg.observations[group].terms
         if tuple(terms) != expected:
             raise ValueError(f"{prefix}: {group} observation order does not match the contract")
-        for term, names in (("joint_pos", CV2.POLICY_POSITION_JOINT_NAMES), ("joint_vel", CV2.POLICY_JOINT_NAMES)):
+        for term, names in (("joint_pos", CV2.OBSERVATION_POSITION_JOINT_NAMES), ("joint_vel", CV2.OBSERVATION_VELOCITY_JOINT_NAMES)):
             if tuple(terms[term].params["asset_cfg"].joint_names) != names:
                 raise ValueError(f"{prefix}: {group} {term} joint order changed")
+        group_cfg = env_cfg.observations[group]
+        if group == "actor" and (group_cfg.history_length != CV2.ACTOR_HISTORY_LENGTH or not group_cfg.flatten_history_dim):
+            raise ValueError(f"{prefix}: actor history must contain five flattened frames")
+        if group == "critic" and group_cfg.history_length not in (None, 0):
+            raise ValueError(f"{prefix}: critic must contain the current frame only")
 
 
 def _assert_task_contract(task_id: str, env_cfg) -> None:

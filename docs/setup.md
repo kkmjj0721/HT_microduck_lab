@@ -192,7 +192,7 @@ uv run --no-sync python -c \
   "import onnx, onnxruntime; print('ONNX:', onnx.__version__); print('ONNX Runtime:', onnxruntime.__version__)"
 ```
 
-这些检查验证依赖和 GPU 基础环境。机器人环境创建、执行器响应和训练短跑需要在对应模块实现后另行验证。
+这些检查验证依赖和 GPU 基础环境；机器人环境创建、执行器响应和训练运行需通过专项检查另行验证。
 
 模型加载与关节映射检查：
 
@@ -200,8 +200,9 @@ uv run --no-sync python -c \
 uv run --no-sync python tools/check_robot.py
 ```
 
-本机有图形桌面时，可加 `--viewer` 静态查看机器人。当前检查验证 MJCF 编译与 15 个关节的电机映射，
-执行器和训练环境仍需在后续步骤实现。
+本机有图形桌面时，可加 `--viewer` 静态查看机器人。该工具验证 MJCF 编译与关节、电机映射。
+混合执行器和任务环境已接入，训练与回放入口见[第 5 节](#5-当前训练入口状态)；
+动态执行器响应、环境步进和策略效果需分别通过对应专项检查验收。
 
 ## 4. 日常使用和依赖维护
 

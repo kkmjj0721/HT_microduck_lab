@@ -1,9 +1,10 @@
 # Copyright (c) 2026-2027 zh
-"""按官方 MicroDuck Velocity 配方训练行走与头部指令，保留 VelStand 的旧接口。
+"""提供平地速度任务与官方头颈变体共用的基础配方。
 
 来源：pollen-robotics/microduck_rl@bae39f5900b318f7e87fc485c30a31213cfa14eb，
 src/mjlab_microduck/tasks/microduck_velocity_env_cfg.py（Apache-2.0）。
-奖励、命令与课程逐项移植；HT 名称、策略关节和执行器生命周期由 official_robot 装配。
+奖励、命令与课程逐项移植；普通速度入口采用较小动作、HOME 头颈目标和固定动作变化惩罚。
+HT 名称、策略关节和执行器生命周期由 official_robot 装配。
 """
 
 import math
@@ -35,6 +36,7 @@ from mjlab.terrains.terrain_generator import TerrainGeneratorCfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 
 from ht_microduck.robot.ht_microduck_constants import get_ht_microduck_robot_cfg
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.config.ht_microduck.official_common import (
     make_official_base_env_cfg as make_velocity_env_cfg,
 )
@@ -629,8 +631,14 @@ HEAD_POSE_RANGES_FULL = ((-1.1, 1.1), (-1.1, 1.1), (-1.4, 1.4), (-0.31, 0.31))
 def make_flat_velocity_env_cfg(
     num_envs: int = 4096, seed: int | None = None, play: bool = False
 ):
-    """装配 HT 机器人，返回官方平地行走配方。"""
+    """装配 HT 平地速度任务，保留当前观测、物理时序与执行器延迟。"""
     from ht_microduck.tasks.config.ht_microduck.official_robot import adapt_official_cfg
 
     cfg = _make_official_velocity_env_cfg(play=play, rough=False)
+    cfg.actions["joint_pos"].scale = C.WALKING_ACTION_SCALE
+    cfg.commands["head_pose"].ranges = ((0.0, 0.0),) * 4
+    cfg.rewards["action_rate_l2"].weight = -0.1
+    # 保留四维头颈观测槽位；移除课程，避免后期重置重新扩大目标或加重动作惩罚。
+    del cfg.curriculum["head_pose_range"]
+    del cfg.curriculum["action_rate_weight"]
     return adapt_official_cfg(cfg, num_envs, seed)

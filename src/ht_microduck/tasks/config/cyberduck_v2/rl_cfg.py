@@ -40,7 +40,7 @@ CyberDuckV2VelocityRlCfg = RslRlOnPolicyRunnerCfg(
     ),
     logger="tensorboard",
     experiment_name="cyberduck_v2_flat_velocity",
-    run_name="velocity",
+    run_name="rolling_h5_a10",
     save_interval=250,
     num_steps_per_env=24,
     max_iterations=10_000,

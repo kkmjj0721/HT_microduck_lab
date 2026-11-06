@@ -16,7 +16,10 @@ __pycache__/
 /.artifacts/
 /MUJOCO_LOG.TXT
 
-# 测试工具缓存、覆盖率数据及报告；正式测试源码与测试数据保留
+# 本地测试源码及测试数据，仅在本地保留
+/tests/
+
+# 测试工具缓存、覆盖率数据及报告
 .hypothesis/
 .tox/
 .nox/
@@ -46,4 +49,4 @@ __pycache__/
 /docs/development.md
 /docs/collaboration_review.md
 
-# 正式测试、正式技术文档、模型资源与 uv.lock 保持可跟踪
+# 正式技术文档、模型资源与 uv.lock 保持可跟踪

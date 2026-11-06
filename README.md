@@ -8,8 +8,8 @@ HT 的训练、恢复与回放链路已有运行证据；前坐等技能尚未�
 
 | 任务 ID | 训练目标或用途 |
 | --- | --- |
-| `HtDuck-Flat-Velocity` | 平地速度与随机头颈姿态跟踪 |
-| `HtDuck-Flat-Velocity-Head` | 同一速度跟踪配方，保留独立任务 ID 与日志 |
+| `HtDuck-Flat-Velocity` | 平地速度跟踪，头颈目标保持 HOME |
+| `HtDuck-Flat-Velocity-Head` | 平地速度与随机头颈姿态跟踪，使用独立配方与日志 |
 | `HtDuck-Flat-StandUp` | 从站、坐、前躺和后躺初态起立，跟踪躯干指令 |
 | `HtDuck-Flat-SitStand` | 受令坐站切换，采用原有后收腿目标 |
 | `HtDuck-Flat-SitStand-Forward` | 受令站立与前收腿坐下，保留 v3 配方作为对照 |
@@ -17,7 +17,7 @@ HT 的训练、恢复与回放链路已有运行证据；前坐等技能尚未�
 | `HtDuck-Flat-VelStand` | 行走、站立与恢复技能组合 |
 | `HtDuck-Flat-SitStand-Unbounded` | 坐站任务未约束关节目标的历史语义对照 |
 | `HtDuck-Flat-VelStand-Unbounded` | 组合任务未约束关节目标的历史语义对照 |
-| `CyberDuckV2-Flat-Velocity` | CyberDuck V2 平地速度跟踪，混合位置／速度动作 |
+| `CyberDuckV2-Flat-Velocity` | 主动轮行速度跟踪，8 路腿位置＋2 路踝速度，头颈保持 HOME |
 
 ## 快速开始
 
@@ -45,7 +45,7 @@ uv run --no-sync python -B tools/check_robot.py --robot cyberduck-v2 --viewer
 ### 训练
 
 ```bash
-# HT Microduck：平地速度与头颈姿态跟踪
+# HT Microduck：平地速度跟踪，头颈目标保持 HOME
 uv run --no-sync duck-train HtDuck-Flat-Velocity \
   --env.scene.num-envs 1024 --agent.max-iterations 3000 --agent.seed 0
 
@@ -53,6 +53,8 @@ uv run --no-sync duck-train HtDuck-Flat-Velocity \
 uv run --no-sync duck-train CyberDuckV2-Flat-Velocity \
   --env.scene.num-envs 1024 --agent.max-iterations 3000 --agent.seed 0
 ```
+
+`HtDuck-Flat-Velocity` 使用 `0.25 rad/action`、四维零头颈指令和固定 `action_rate_l2=-0.1`；actor／critic／动作维度为 `61/76/14`。
 
 其他任务使用表中对应的 ID。环境数与训练轮数按资源和实验目标调整；训练支持 `--env.*` 和 `--agent.*` 覆盖配置，通过 `--gpu-ids 0` 选择 GPU。可用 `uv run --no-sync list-envs` 查看任务，命令后添加 `--help` 查看参数。
 
@@ -84,6 +86,12 @@ uv run --no-sync duck-play CyberDuckV2-Flat-Velocity \
 ```
 
 恢复与回放须匹配机器人、任务接口和动作语义；HT 与 CyberDuck V2 的检查点及归一化统计不能混用。旧版未约束关节目标的 SitStand / VelStand 权重使用表中的 `-Unbounded` 对照任务。仿真参数尚未完成实机标定，短时检查也不代表策略能力达标。
+
+CyberDuck 当前接口为 actor `225`（每项按旧到新展开 5 帧、单帧 45 维）、critic `52`、动作 `10`；
+头颈和嘴保持 HOME 目标，头颈实际状态保留观测。轮驱动作向两踝下发 `2 rad/s/action`、限幅 `±4 rad/s`，
+四个滚轮经现有传动约束跟随。机身指令 `vx ∈ [-0.1,0.1] m/s`、`vy=0`、`wz ∈ [-0.2,0.2] rad/s`，
+平移/偏航变化率分别限制为 `0.05 m/s²` 和 `0.2 rad/s²`。训练与回放使用同一接口；
+旧 CyberDuck `49/56/14` 检查点和归一化统计不兼容，当前运行标识为 `rolling_h5_a10`，应重新训练。
 
 ## 项目结构
 
