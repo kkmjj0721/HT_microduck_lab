@@ -136,7 +136,7 @@ def test_factory_copies_do_not_share_mutable_configuration():
     first.articulation.actuators[0].delay_max_lag = 7
     first.articulation.actuators[1].delay_max_lag = 8
     for other in (second, robot.CYBERDUCK_V2_ROBOT_CFG):
-        assert other.init_state.joint_pos["neck_pitch_joint"] == 0.0
+        assert other.init_state.joint_pos["neck_pitch_joint"] == -0.360
         assert other.init_state.joint_vel["head_pitch_joint"] == 0.0
         assert other.articulation.actuators[0].stiffness == 10.0
         assert other.articulation.actuators[1].stiffness == 0.0
@@ -146,6 +146,7 @@ def test_factory_copies_do_not_share_mutable_configuration():
         assert other.articulation.actuators[1].delay_max_lag == 3
     assert second.init_state.pos == (0.0, 0.0, 0.252)
     assert robot.SOURCE_JOINT_POS["neck_pitch_joint"] == 0.0
+    assert all(value == 0.0 for value in robot.SOURCE_FRAME.joint_pos.values())
 
 
 def test_mixed_drives_cover_only_independent_joints(entity_model):
@@ -263,14 +264,25 @@ def test_soft_mimic_relaxes_displaced_rollers_without_external_load():
         assert abs(float(residual[0])) < 0.003
 
 
-def test_preview_uses_source_pose_and_unique_scene_objects():
+def test_preview_uses_selected_home_pose_and_unique_scene_objects():
     model, data = robot.make_preview()
     key = model.key("init_state")
+    selected = {
+        "r_hip_pitch_joint": 0.490,
+        "l_hip_pitch_joint": 0.490,
+        "r_calf_joint": -0.444,
+        "l_calf_joint": -0.444,
+        "neck_pitch_joint": -0.360,
+        "head_pitch_joint": 0.405,
+        "head_roll_joint": 0.011,
+    }
     np.testing.assert_array_equal(data.qpos, key.qpos)
-    np.testing.assert_array_equal(data.qpos[:3], robot.SOURCE_FRAME.pos)
+    np.testing.assert_array_equal(data.qpos[:3], robot.HOME_FRAME.pos)
     np.testing.assert_array_equal(data.qpos[3:7], [1, 0, 0, 0])
-    np.testing.assert_array_equal(data.qpos[7:], 0.0)
-    np.testing.assert_array_equal(data.ctrl, 0.0)
+    np.testing.assert_array_equal(data.qpos[7:], [selected.get(name, 0.0) for name in robot.JOINT_NAMES])
+    np.testing.assert_array_equal(data.qvel, 0.0)
+    # mjlab 的原生 key.ctrl 保存关节初值，动态驱动由 NT/BAM 生命周期计算。
+    np.testing.assert_array_equal(data.ctrl, [selected.get(name, 0.0) for name in robot.ACTUATED_JOINT_NAMES])
     assert data.time == 0.0
     assert (model.nu, model.neq) == (15, 4)
     assert (model.geom_type == mujoco.mjtGeom.mjGEOM_PLANE).sum() == 1

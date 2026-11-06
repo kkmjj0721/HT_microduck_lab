@@ -19,7 +19,7 @@ from pathlib import Path
 
 import torch
 
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 
 ROOT = Path(__file__).resolve().parents[1]
 METRICS = (
@@ -34,7 +34,7 @@ def check_gpu_actions(args):
     from mjlab.rl import RslRlVecEnvWrapper
     from mjlab.tasks.registry import load_env_cfg, load_rl_cfg, load_runner_cls
 
-    from ht_microduck.tasks.config.official_robot import (
+    from ht_microduck.tasks.config.ht_microduck.official_robot import (
         FACE_DOWN_SUPPORT_Z,
         FACE_UP_SUPPORT_Z,
     )

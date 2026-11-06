@@ -4,7 +4,7 @@
 from mjlab.managers import EventTermCfg
 from mjlab.managers.metrics_manager import MetricsTermCfg
 
-from ht_microduck.tasks.config.flat_sitstand_forward_env_cfg import (
+from ht_microduck.tasks.config.ht_microduck.flat_sitstand_forward_env_cfg import (
     make_sitstand_forward_env_cfg,
 )
 from ht_microduck.tasks.mdp.forward_behavior import (

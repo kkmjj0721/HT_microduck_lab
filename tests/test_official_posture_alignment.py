@@ -9,10 +9,14 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_sitstand_env_cfg import make_sitstand_env_cfg
-from ht_microduck.tasks.config.flat_standup_env_cfg import make_standup_env_cfg
-from ht_microduck.tasks.config.official_robot import SIT_Z, STAND_Z
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_sitstand_env_cfg import (
+    make_sitstand_env_cfg,
+)
+from ht_microduck.tasks.config.ht_microduck.flat_standup_env_cfg import (
+    make_standup_env_cfg,
+)
+from ht_microduck.tasks.config.ht_microduck.official_robot import SIT_Z, STAND_Z
 from ht_microduck.tasks.mdp.official_posture_events import (
     SitStandCommand,
     set_random_ground_state,

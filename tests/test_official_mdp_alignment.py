@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from ht_microduck.actuator.HD_1910_C001.friction_dr_bam import FrictionDRBamActuator
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.mdp.official_commands import (
     UniformPoseCommandCfg,
     VelocityCommandCommandOnlyCfg,

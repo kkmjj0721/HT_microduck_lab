@@ -16,7 +16,7 @@ from mjlab.envs import ManagerBasedRlEnv
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.utils.lab_api.math import wrap_to_pi
 
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.mdp.official_posture_events import (
     _posture_blend,
     _servo_joint_ids,

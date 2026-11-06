@@ -18,7 +18,7 @@ from mjlab.sensor import ObjRef, TerrainHeightSensorCfg
 from ht_microduck.actuator.HD_1910_C001 import bam_init
 from ht_microduck.actuator.HTDW_3532_02_DNE import htdw3532_init
 from ht_microduck.robot.ht_microduck_constants import FOOT_SITE_NAMES, HOME_FRAME
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 
 STAND_Z = C.STAND_Z
 SIT_Z = C.SIT_Z

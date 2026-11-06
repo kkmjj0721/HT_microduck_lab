@@ -1,30 +1,18 @@
-"""Observation, command and sensor plumbing shared by every HT-Duck task.
+# Copyright (c) 2026-2027 zh
+"""HT 任务共用的关节选择、观测噪声与接触传感器配置。
 
-All walking and posture tasks must present the same
-actor vector, in the same order. Runtime policy selection must also apply the
-task-specific action scale. Keeping term construction here enforces layout: a task
-adds *values* to a slot, never a new slot.
-
-The three command slots are ``twist`` (3), ``head_pose`` (4) and ``body_pose`` (6).
-A task that does not use a slot still declares it and fills it with zeros, which
-is why :func:`zero_command_padding` exists rather than the terms being omitted.
+actor_terms 和 critic_terms 构造 VelStand 的观测；官方任务独立构造其观测项。
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import torch
 from mjlab.envs import mdp as envs_mdp
 from mjlab.managers.observation_manager import ObservationTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 
-from ht_microduck.tasks import contract as C
-
-if TYPE_CHECKING:
-    from mjlab.envs import ManagerBasedRlEnv
+from ht_microduck.tasks import ht_microduck_contract as C
 
 ROBOT = "robot"
 FEET_SENSOR = "feet_ground_contact"
@@ -36,7 +24,6 @@ FOOT_SITE_NAMES = ("r_foot", "l_foot")
 
 # Joint subsets as resolved names, so reward terms never hard-code an index.
 POLICY_JOINTS = SceneEntityCfg(ROBOT, joint_names=C.POLICY_JOINT_NAMES)
-LEG_JOINTS = SceneEntityCfg(ROBOT, joint_names=C.LEG_JOINT_NAMES)
 HEAD_JOINTS = SceneEntityCfg(ROBOT, joint_names=C.HEAD_JOINT_NAMES)
 
 # Observation noise, matched to upstream microduck_rl. These are the ranges a real
@@ -48,36 +35,11 @@ NOISE_JOINT_POS = Unoise(n_min=-0.001, n_max=0.001)
 NOISE_JOINT_VEL = Unoise(n_min=-0.25, n_max=0.25)
 
 
-def zero_command_padding(dim: int) -> ObservationTermCfg:
-    """A command slot a task does not drive: always zeros, never omitted.
-
-    The declared width is recorded on the returned config so the import-time guard can
-    check it against ``contract.ACTOR_OBSERVATION_DIMS``: a padded slot is exactly the
-    place where a wrong width slips through silently, because nothing else reads it.
-    """
-
-    def _zeros(env: ManagerBasedRlEnv) -> torch.Tensor:
-        return torch.zeros(env.num_envs, dim, device=env.device)
-
-    _zeros.__name__ = f"zero_command_{dim}"
-    term = ObservationTermCfg(func=_zeros)
-    # Recorded on the term object, not in ``params``: params are forwarded to the
-    # function as keyword arguments, so a bookkeeping key there would be passed through
-    # and raise. The guard in ``tasks/__init__.py`` reads this attribute.
-    term.padding_dim = dim
-    return term
-
-
 def actor_terms(
     head_command: str | ObservationTermCfg = "head_pose",
     body_command: str | ObservationTermCfg = "body_pose",
 ) -> dict[str, ObservationTermCfg]:
-    """The actor observation group, in contract order.
-
-    ``head_command`` and ``body_command`` accept either a command name (the slot is
-    driven by that command term) or a pre-built term (a task passes
-    :func:`zero_command_padding` when it does not use the slot).
-    """
+    """按冻结契约构造 actor 观测，命令槽位接受命令名或已构造的观测项。"""
     return {
         "base_ang_vel": ObservationTermCfg(
             func=envs_mdp.base_ang_vel,
@@ -102,30 +64,12 @@ def actor_terms(
             func=envs_mdp.generated_commands,
             params={"command_name": "twist"},
         ),
-        "head_command": _resolve(head_command, dim=4),
-        "body_command": _resolve(body_command, dim=6),
+        "head_command": _resolve(head_command),
+        "body_command": _resolve(body_command),
     }
 
 
-def assert_actor_dim(env, group: str = "actor") -> None:
-    """Fail loudly if a task's actor vector drifts from the frozen width.
-
-    The width is not a style preference: an exported ONNX file has it baked into its
-    first layer, and the runtime swaps policies by shape. A task that commands a
-    narrower slot — easy to introduce by passing a 1-D ``ranges`` tuple to a command
-    term — silently produces a shorter vector, which this catches at construction
-    instead of at deployment. (It happened once: a 1-wide twist slot yielded 59-D.)
-    """
-    dims = env.observation_manager.group_obs_dim[group]
-    width = dims[0] if isinstance(dims[0], int) else sum(dims[0])
-    if width != C.ACTOR_OBSERVATION_DIM:
-        raise ValueError(
-            f"{group} observation is {width}-D but the contract fixes "
-            f"{C.ACTOR_OBSERVATION_DIM}-D; check the command slot widths"
-        )
-
-
-def _resolve(slot: str | ObservationTermCfg, dim: int) -> ObservationTermCfg:
+def _resolve(slot: str | ObservationTermCfg) -> ObservationTermCfg:
     if isinstance(slot, ObservationTermCfg):
         return slot
     return ObservationTermCfg(

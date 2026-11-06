@@ -20,7 +20,7 @@ import torch
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.tasks.registry import load_env_cfg
 
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.mdp.official_posture_rewards import (
     body_pose_tracking_locomotion,
 )

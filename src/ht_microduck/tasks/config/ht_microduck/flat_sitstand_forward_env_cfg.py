@@ -11,8 +11,10 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers import RewardTermCfg
 from mjlab.managers.metrics_manager import MetricsTermCfg
 
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_sitstand_env_cfg import make_sitstand_env_cfg
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_sitstand_env_cfg import (
+    make_sitstand_env_cfg,
+)
 from ht_microduck.tasks.mdp import forward_posture as forward
 
 # HT 模型+X为前。对177个候选执行真实动作保持8秒；当前候选末2秒倾角约1.46°、根高约.05635m。

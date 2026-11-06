@@ -12,7 +12,7 @@ from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.tasks.registry import load_env_cfg, load_rl_cfg
 
 from ht_microduck.robot.ht_microduck_constants import HOME_JOINT_POS, get_robot_spec
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.mdp.action_metrics import (
     ActuatorSaturationDuration,
     actuator_saturation_fraction,

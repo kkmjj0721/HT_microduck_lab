@@ -7,8 +7,10 @@ import torch
 from mjlab.tasks.registry import load_env_cfg, load_rl_cfg, load_runner_cls
 
 from ht_microduck.tasks import _assert_task_contract
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_velstand_env_cfg import assert_curriculum_units
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_velstand_env_cfg import (
+    assert_curriculum_units,
+)
 from ht_microduck.tasks.rl.runner import (
     OfficialTaskOnPolicyRunner,
     VelocityHeadOnPolicyRunner,
@@ -86,3 +88,19 @@ def test_velstand_curriculum_rejects_a_mismatched_rollout_length():
     cfg.num_steps_per_env = 1
     with pytest.raises(ValueError, match="every curriculum stage would fire"):
         assert_curriculum_units(cfg)
+
+
+def test_both_robot_families_are_registered_with_distinct_action_modes():
+    from mjlab.envs.mdp.actions import JointVelocityActionCfg
+    from mjlab.tasks.registry import list_tasks
+
+    from ht_microduck.tasks import CYBERDUCK_V2_VELOCITY_TASK_ID
+
+    assert CYBERDUCK_V2_VELOCITY_TASK_ID in list_tasks()
+    for task_id, _, _ in TASKS:
+        assert tuple(load_env_cfg(task_id).actions) == ("joint_pos",)
+    for play in (False, True):
+        cfg = load_env_cfg(CYBERDUCK_V2_VELOCITY_TASK_ID, play=play)
+        _assert_task_contract(CYBERDUCK_V2_VELOCITY_TASK_ID, cfg)
+        assert isinstance(cfg.actions["joint_vel"], JointVelocityActionCfg)
+    assert load_runner_cls(CYBERDUCK_V2_VELOCITY_TASK_ID) is None

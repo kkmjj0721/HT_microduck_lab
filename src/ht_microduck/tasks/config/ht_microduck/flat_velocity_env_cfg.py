@@ -35,7 +35,7 @@ from mjlab.terrains.terrain_generator import TerrainGeneratorCfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 
 from ht_microduck.robot.ht_microduck_constants import get_ht_microduck_robot_cfg
-from ht_microduck.tasks.config.official_common import (
+from ht_microduck.tasks.config.ht_microduck.official_common import (
     make_official_base_env_cfg as make_velocity_env_cfg,
 )
 from ht_microduck.tasks.mdp import official as microduck_mdp
@@ -630,7 +630,7 @@ def make_flat_velocity_env_cfg(
     num_envs: int = 4096, seed: int | None = None, play: bool = False
 ):
     """装配 HT 机器人，返回官方平地行走配方。"""
-    from ht_microduck.tasks.config.official_robot import adapt_official_cfg
+    from ht_microduck.tasks.config.ht_microduck.official_robot import adapt_official_cfg
 
     cfg = _make_official_velocity_env_cfg(play=play, rough=False)
     return adapt_official_cfg(cfg, num_envs, seed)

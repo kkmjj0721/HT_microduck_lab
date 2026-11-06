@@ -10,7 +10,7 @@ from mjlab.managers.action_manager import ActionManager
 from mjlab.utils.buffers import DelayBuffer
 
 from ht_microduck.robot.ht_microduck_constants import HOME_JOINT_POS
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.mdp.forward_initialization import (
     ForwardInitializedJointPositionActionCfg,
     capture_forward_state,

@@ -141,7 +141,7 @@ def get_robot_spec() -> mujoco.MjSpec:
 
 
 # ---------- 初态与混合驱动 ----------
-# 复用源 XML 的零位和根高度，未将此初态认定为稳定站姿。
+# 保留源 XML 的零位供资源核对，实体默认使用下方用户选定的 HOME 初态。
 SOURCE_JOINT_POS: dict[str, float] = dict.fromkeys(JOINT_NAMES, 0.0)
 SOURCE_FRAME = EntityCfg.InitialStateCfg(
     pos=(0.0, 0.0, 0.252),
@@ -149,6 +149,25 @@ SOURCE_FRAME = EntityCfg.InitialStateCfg(
     lin_vel=(0.0, 0.0, 0.0),
     ang_vel=(0.0, 0.0, 0.0),
     joint_pos=dict(SOURCE_JOINT_POS),
+    joint_vel=dict.fromkeys(JOINT_NAMES, 0.0),
+)
+
+# 用户选定的对称弯腿与头颈后收姿态，单位 rad；其余位置和全部速度初值为零。
+# 这是位置目标与重置初值，受载实际角度存在偏差；根高度与躯干初始朝向沿用源配置。
+# 头部 pitch/roll 含当前增益下的静止受载补偿，使头部在世界坐标中接近水平。
+HOME_JOINT_POS: dict[str, float] = {
+    **SOURCE_JOINT_POS,
+    "r_hip_pitch_joint": 0.490,
+    "l_hip_pitch_joint": 0.490,
+    "r_calf_joint": -0.444,
+    "l_calf_joint": -0.444,
+    "neck_pitch_joint": -0.360,
+    "head_pitch_joint": 0.405,
+    "head_roll_joint": 0.011,
+}
+HOME_FRAME = replace(
+    SOURCE_FRAME,
+    joint_pos=dict(HOME_JOINT_POS),
     joint_vel=dict.fromkeys(JOINT_NAMES, 0.0),
 )
 
@@ -192,7 +211,7 @@ SERVO_ACTUATOR_CFG = FrictionDRBamActuatorCfg(
 
 CYBERDUCK_V2_ROBOT_CFG = EntityCfg(
     spec_fn=get_robot_spec,
-    init_state=SOURCE_FRAME,
+    init_state=HOME_FRAME,
     articulation=EntityArticulationInfoCfg(
         actuators=(
             BRUSHLESS_ACTUATOR_CFG,
@@ -212,7 +231,7 @@ def get_cyberduck_v2_robot_cfg() -> EntityCfg:
 
 # ---------- 静态预览 ----------
 def make_preview() -> tuple[mujoco.MjModel, mujoco.MjData]:
-    """编译单环境平地场景并恢复源初态；仅用于静态形态检查。"""
+    """编译单环境平地场景并恢复默认 HOME 初态；仅用于静态形态检查。"""
     from mjlab.scene import Scene, SceneCfg
     from mjlab.sim import MujocoCfg
     from mjlab.terrains import TerrainEntityCfg

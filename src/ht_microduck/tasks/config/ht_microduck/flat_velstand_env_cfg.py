@@ -28,9 +28,12 @@ from mjlab.viewer import ViewerConfig
 from ht_microduck.actuator.HD_1910_C001 import bam_init
 from ht_microduck.actuator.HTDW_3532_02_DNE import htdw3532_init
 from ht_microduck.robot.ht_microduck_constants import get_ht_microduck_robot_cfg
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_velocity_env_cfg import COMMAND_RANGES
-from ht_microduck.tasks.config.terrain import POSTURE_NCONMAX, POSTURE_NJMAX
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import COMMAND_RANGES
+from ht_microduck.tasks.config.ht_microduck.terrain import (
+    POSTURE_NCONMAX,
+    POSTURE_NJMAX,
+)
 from ht_microduck.tasks.mdp.action_metrics import (
     ActuatorSaturationDuration,
     actuator_saturation_fraction,
@@ -630,6 +633,6 @@ def make_velstand_env_cfg(
 
 
 def _terrain():
-    from ht_microduck.tasks.config.terrain import FLAT_TERRAIN
+    from ht_microduck.tasks.config.ht_microduck.terrain import FLAT_TERRAIN
 
     return FLAT_TERRAIN

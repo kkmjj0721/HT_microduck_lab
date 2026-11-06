@@ -25,8 +25,8 @@ import pytest
 import torch
 from tensordict import TensorDict
 
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.rl_cfg import FlatVelocityRlCfg
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.rl_cfg import FlatVelocityRlCfg
 
 ACTOR_OBS = C.ACTOR_OBSERVATION_DIM
 CRITIC_OBS = C.TASK_CRITIC_OBSERVATION_DIMS["HtDuck-Flat-Velocity"]

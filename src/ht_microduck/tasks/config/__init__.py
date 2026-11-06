@@ -1,1 +1,2 @@
-"""Environment and RL configurations for all HT-Duck tasks."""
+# Copyright (c) 2026-2027 zh
+"""内容：按机器人分别组织环境、RL、地形与本体适配配置。"""

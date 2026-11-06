@@ -21,7 +21,7 @@ from mjlab.tasks.velocity.mdp.velocity_command import (
 )
 from mjlab.utils.lab_api.math import quat_apply
 
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 

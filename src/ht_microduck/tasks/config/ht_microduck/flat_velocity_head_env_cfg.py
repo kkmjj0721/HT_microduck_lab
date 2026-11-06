@@ -4,7 +4,7 @@
 官方 Velocity 本身已经训练随机头颈指令；两个入口采用同一环境配方，日志由注册项区分。
 """
 
-from ht_microduck.tasks.config.flat_velocity_env_cfg import (
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
     HEAD_POSE_RANGES_FULL,
     make_flat_velocity_env_cfg,
 )

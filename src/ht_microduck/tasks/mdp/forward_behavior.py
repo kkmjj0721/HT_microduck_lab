@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_sitstand_forward_env_cfg import (
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_sitstand_forward_env_cfg import (
     FORWARD_SIT_Z,
     FORWARD_SITTING_JOINT_POS,
 )

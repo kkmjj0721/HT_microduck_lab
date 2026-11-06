@@ -199,18 +199,6 @@ def feet_slip(
     return torch.sum(speed * contact, dim=1) * moving.float()
 
 
-def illegal_contact(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
-    """Terminate when a body other than the feet touches the ground.
-
-    mjlab's bundled ``illegal_contact`` treats *any* contact on the sensor as
-    illegal, which is the right semantics for a sensor built from the torso geoms
-    but wrong for a foot sensor. This robot needs both: feet may touch, nothing
-    else may.
-    """
-    sensor = env.scene[sensor_name]
-    return torch.any(sensor.data.found > 0, dim=-1)
-
-
 def state_is_nan(env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG) -> torch.Tensor:
     """Terminate on non-finite robot state.
 

@@ -53,7 +53,7 @@
 
 - `src/ht_microduck/robot/`：机器人 MJCF、mesh、关节映射、实体初态和碰撞配置，不放任务奖励或训练循环。
 - `src/ht_microduck/actuator/`：两类执行器模型、参数来源和 mjlab 生命周期适配，不决定策略动作子集。
-- `src/ht_microduck/tasks/`：根目录保留任务注册与契约；`config/` 放环境、RL 与地形配置，统一 `mdp/` 放命令、观测、动作、奖励、终止、重置与课程，`rl/` 放任务 runner 适配。
+- `src/ht_microduck/tasks/`：根目录保留任务注册与各机器人独立契约；`config/` 按 `ht_microduck/`、`cyberduck_v2/` 分别放环境、RL 与地形配置，统一 `mdp/` 放命令、观测、动作、奖励、终止、重置与课程，`rl/` 放任务 runner 适配。
 - `rsl_rl/`：rsl-rl-lib 5.4.2 完整副本，统一提供 PPO、网络、Storage、Runner 和 Logger，不放任务特定规则，也不另写一套通用算法。
 - `src/ht_microduck/train_cli.py`、`play_cli.py`：训练和回放的官方入口薄封装，只负责 import 与转发，不承载核心实现；评估与导出入口以实际实现为准。
 - `tools/`：安装、模型、数据、契约和环境检查等辅助工具。
@@ -148,7 +148,7 @@ Python 脚本格式如下，内容与命令应替换为当前脚本的实际职�
 ## 本项目的技术与产物约束
 
 - 当前采用独立 Python 包 `src/ht_microduck/`，mjlab 固定为 1.6.0，负责仿真、场景和环境管理；训练算法沿用上述 `rsl_rl/`，用户未调整方向时不切换架构。
-- `src/ht_microduck/robot/ht_microduck_constants.py` 是关节名称和电机分组的依据，动作子集与顺序由任务配置明确声明。实机参数、厂家资料、仿真假设与标定结果分别注明，未知参数不能写成已确认值。
+- `src/ht_microduck/robot/ht_microduck_constants.py` 与 `cyberduck_v2_constants.py` 分别是两种机器人关节名称和电机分组的依据，动作子集、顺序和位置／速度单位由各自任务契约与配置明确声明。实机参数、厂家资料、仿真假设与标定结果分别注明，未知参数不能写成已确认值。
 - 修改观测、动作、归一化或检查点接口时，明确顺序、维度、单位、坐标系、类型、设备、时序和兼容性，同步核对训练、回放、评估与导出。
 - `rsl_rl/` 与 BAM 移植文件保留上游原文、格式、版权头与许可，不为统一中文注释而翻译或重排；本地适配以单独文件或明确注释标注。中文注释与文件头约定用于新增本地代码，不因本次规则迁移批量重写已有源码或终端输出。
 - 安装和同步依赖使用 `tools/setup_env.py`；运行项目命令使用 `uv run --no-sync`，保留选定的 PyTorch 后端。依赖声明改变时用 uv 更新锁文件，一并检查和交付 `pyproject.toml` 与 `uv.lock`。

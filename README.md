@@ -8,7 +8,8 @@ mjlab 负责仿真、场景和环境管理；执行器模型、任务注册与�
 官方 `mjlab` 入口，PPO、网络与 Runner 来自本仓库根目录的 `rsl_rl/`；`duck-train` 与
 `duck-play` 是其薄封装。训练只验证到"链路通、可恢复、可回放"，
 `duck-eval`/`duck-export` 属于后续任务。
-另提供 **CyberDuck V2** 的独立模型、mjlab 实体与静态预览；现有训练任务使用 HT Microduck。
+另提供 **CyberDuck V2** 的独立模型、mjlab 实体、静态预览和平地速度任务配置；
+新任务使用位置／速度混合动作，策略效果尚待训练验收。
 
 ## 目录结构
 
@@ -16,8 +17,11 @@ mjlab 负责仿真、场景和环境管理；执行器模型、任务注册与�
 src/ht_microduck/
   tasks/                  # 任务注册、契约，以及按职责分层的配置与 MDP
     __init__.py           # register_mjlab_task（经 mjlab.tasks entry point 自动发现）
-    contract.py           # 各任务时序/动作/观测契约
-    config/               # 各任务环境、RL 与地形配置
+    ht_microduck_contract.py    # HT 任务时序/动作/观测契约
+    cyberduck_v2_contract.py    # CyberDuck V2 独立混合动作契约
+    config/
+      ht_microduck/       # HT 环境、RL、地形与本体适配配置
+      cyberduck_v2/       # CyberDuck V2 独立环境与 RL 配置
     mdp/                  # 官方 MDP 与独立保留的 VelStand 实现
     rl/                   # 任务检查点恢复与数值适配
   robot/
@@ -35,7 +39,7 @@ rsl_rl/                         # rsl-rl-lib 5.4.2 完整副本，训练实际�
 保持相同的三个子包：`robot/`、`actuator/`、`tasks/`，机器人 MJCF 与 `assets/` 同级放在
 `robot/ht_microduck/` 数据目录里，训练算法只保留 `rsl_rl/` 一套。
 `tasks/` 内参考本机 `legged_wbc_mjlab` 按 `config/`、统一的 `mdp/` 和 `rl/` 分层，
-新增任务在 `config/` 定义环境与 RL 配置，再在 `tasks/__init__.py` 注册。
+新增任务在 `config/<机器人>/` 定义环境与 RL 配置，再在 `tasks/__init__.py` 注册。
 
 ## 快速开始
 
@@ -127,6 +131,7 @@ uv run --no-sync duck-train HtDuck-Flat-Velocity --env.scene.num-envs 16 \
 | `HtDuck-Flat-VelStand` | 行走、站立与恢复技能组合 |
 | `HtDuck-Flat-SitStand-Unbounded` | 坐站原始动作目标语义的对照 |
 | `HtDuck-Flat-VelStand-Unbounded` | 组合任务原始动作目标语义的对照 |
+| `CyberDuckV2-Flat-Velocity` | CyberDuck V2 平地速度配置，混合位置／速度控制，策略效果待验收 |
 
 ```bash
 # 训练：默认写到 logs/rsl_rl/<experiment_name>/<时间戳>_<run_name>/
@@ -182,7 +187,7 @@ uv run --no-sync python -B tests/test_forward_v4_behavior.py --checkpoint-file .
 跟踪奖励为零；StandUp 逐步加入前后躺初态与躯干 z/roll/pitch 跟踪；SitStand 按官方节奏
 训练受令坐站。对应关系和必要适配见[任务对齐设计](docs/design/skill_task_migration.md#t055-除-velstand-外逐项对齐官方任务)。
 
-上述任务（含前坐基础变体）的接口都是 61 维 actor、14 维动作、`1.0 rad/action`、50 Hz（物理步 `.005 s`，
+上述 HT 任务（含前坐基础变体）的接口都是 61 维 actor、14 维动作、`1.0 rad/action`、50 Hz（物理步 `.005 s`，
 decimation=4）；Velocity critic 为 76 维，StandUp/SitStand 为 74 维。VelStand 保留原有
 61/64/14与`.002 s × 10`；恢复窗口、初态概率和身体跟踪已按[恢复修复设计](docs/design/skill_task_migration.md#t057-官方恢复机制与-ht-坐站高度修复)修正，专家蒸馏另阶段实施。旧 64 维 critic 检查点、旧动作缩放和旧观测顺序不能用于
 新配方的完整恢复，须使用对应配置重新训练。短跑只验证运行链路，不代表已经学会各项技能。
@@ -273,7 +278,11 @@ XML 提供 `imu_ang_vel`、`imu_lin_vel`、`imu_accel`、`imu_upvector` 和 `roo
 两踝通过 `set_joint_velocity_target(..., joint_ids=踝关节索引)` 下发 rad/s 目标，局部轴正方向沿用模型；
 其余关节使用 `set_joint_position_target`。速度组关闭位置反馈，不主动回到初始踝角度。
 左右各两个滚轮保留从动，不单独配置执行器；滚轮仍参与运动、碰撞和约束受力。
-初态沿用源零位和 `0.252 m` 根高度，尚未验证稳定站立与策略效果。
+默认初态采用对称弯腿与头颈后收：左右 `hip_pitch=0.490`、`calf=-0.444`，
+`neck_pitch=-0.360`、`head_pitch=0.405`、`head_roll=0.011`（rad），其余关节位置和全部关节速度为零。
+头部角度包含当前仿真增益下的静止受载补偿，使头部接近世界水平面。
+姿态由 `HOME_FRAME` 定义，并用于实体的 `default_joint_pos` 与静态预览；根高度仍为 `0.252 m`。
+源零位保留在 `SOURCE_FRAME`。静止承重已做仿真检查，尚非实机标定或策略效果验收。
 源 XML 原有两个踝部示例 motor 保持原样，实体装配时在内存中替换为上述混合驱动。
 
 ```bash
@@ -292,6 +301,22 @@ uv run --no-sync python -B tools/check_robot.py --robot cyberduck-v2 --viewer
 ```bash
 uv run --no-sync python -B tests/test_cyberduck_v2.py --device cuda:0
 ```
+
+独立任务 `CyberDuckV2-Flat-Velocity` 使用 49 维 actor、56 维 critic 和 14 维混合动作：
+前 12 维依次控制右腿 yaw/roll/pitch/calf、左腿同序及 neck_pitch/head_pitch/head_yaw/head_roll，
+目标为 `HOME + 0.25 × action` rad，并按模型硬限位约束；最后两维依次控制右踝、左踝，
+目标为 `4.0 × action` rad/s，范围 ±8 rad/s。嘴保持 HOME，四个滚轮没有独立动作。
+连续踝角不进入 actor；四轮接地与机身线速度只供 critic。控制频率 50 Hz（`.002 s × 10`）。
+这些是首版仿真配置，不能加载旧 HT 策略或归一化统计。
+
+设置上方项目内临时与缓存路径后，可检查实际任务的动作映射、观测、步进和局部重置：
+
+```bash
+uv run --no-sync python -B tests/test_cyberduck_v2_motion.py --device cuda:0 --steps 300 --output "$check_dir/cyberduck-task"
+uv run --no-sync duck-play CyberDuckV2-Flat-Velocity --agent zero --num-envs 1 --viewer viser
+```
+
+训练配置使用独立日志实验名 `cyberduck_v2_flat_velocity`；专项检查不启动训练，也不代表策略运动性能通过。
 
 ## 在场景中使用
 

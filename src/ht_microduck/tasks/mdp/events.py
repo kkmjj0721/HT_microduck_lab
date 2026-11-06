@@ -2,7 +2,7 @@
 
 VelStand 按官方绝对概率保留站立、低姿态和躺姿切片；前后躺绕 pitch，侧躺绕 roll。
 站立和低姿态沿用本机已确认参考，前后躺保留官方均匀高度带并平移到 HT 的名义几何
-支撑面，不把几何参考称为动态平衡实测值。其余姿态任务继续使用原有重置入口。
+支撑面，不把几何参考称为动态平衡实测值。其他姿态任务使用 official_* 重置入口。
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import torch
 from mjlab.entity import Entity
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     FACE_DOWN_SUPPORT_Z,
     FACE_UP_SUPPORT_Z,
 )
@@ -143,7 +143,7 @@ def reset_to_sit(
         joint_overrides=C.LOW_POSTURE_JOINT_POS,
         joint_noise_std=joint_noise_std,
         # The trunk stays level: this robot sits on its hips with its feet off the
-        # ground, so the pose comes from the joints alone (contract.py).
+        # ground, so the pose comes from the joints alone (ht_microduck_contract.py).
         roll_deg=C.LOW_POSTURE_ROLL_DEG,
         pitch_deg=(0.0, 0.0),
         yaw_range_deg=yaw_range_deg,
@@ -247,59 +247,3 @@ def reset_to_stand(
         position_noise=position_noise,
         asset_cfg=asset_cfg,
     )
-
-
-def reset_to_stand_with_sit_blend(
-    env: ManagerBasedRlEnv,
-    env_ids: torch.Tensor | None,
-    joint_noise_std: float,
-    position_noise: float,
-    command_name: str,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> None:
-    """Start a sit-stand episode from a pose matching the command it will be given.
-
-    The sit-stand task must not start every episode standing: if it does, the seated
-    half of the command distribution is only ever reached by descending, and the policy
-    learns to fall into it.
-
-    **Ordering constraint.** mjlab runs reset *events* before ``command_manager.reset``,
-    so at this point the flag belongs to the *previous* episode and cannot be followed.
-    Writing the flag here is equally wrong the other way: the command manager re-samples
-    it immediately afterwards, discarding the write (measured: 21 of 48 resets spawned a
-    pose opposite to the command).
-
-    So this event draws the flag itself, spawns the matching pose, and records the draw
-    on the command term. ``SitStandCommand`` replays that recorded draw on the reset
-    that follows, which makes the spawn and the command consistent regardless of the
-    managers' order, instead of depending on it.
-    """
-    if env_ids is None:
-        env_ids = torch.arange(env.num_envs, device=env.device)
-    n = len(env_ids)
-    if n == 0:
-        return
-
-    term = env.command_manager.get_term(command_name)
-    seated = torch.rand(n, device=env.device) < getattr(term.cfg, "sit_prob", 0.5)
-
-    # Hand the draw to the command term; its reset() applies it instead of resampling.
-    term.pending_sit_flag[env_ids] = seated.to(term.pending_sit_flag.dtype)
-    if hasattr(term, "alpha"):
-        term.alpha[env_ids] = seated.to(term.alpha.dtype)
-
-    seated_ids = env_ids[seated]
-    if len(seated_ids) > 0:
-        reset_to_sit(
-            env,
-            seated_ids,
-            joint_noise_std=joint_noise_std,
-            position_noise=position_noise,
-            asset_cfg=asset_cfg,
-        )
-
-    standing_ids = env_ids[~seated]
-    if len(standing_ids) > 0:
-        reset_to_stand(
-            env, standing_ids, position_noise=position_noise, asset_cfg=asset_cfg
-        )

@@ -13,9 +13,11 @@ from ht_microduck.robot.ht_microduck_constants import (
     MJCF_PATH,
     get_ht_microduck_robot_cfg,
 )
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_velocity_env_cfg import make_flat_velocity_env_cfg
-from ht_microduck.tasks.config.flat_velocity_head_env_cfg import (
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
+    make_flat_velocity_env_cfg,
+)
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_head_env_cfg import (
     make_flat_velocity_head_env_cfg,
 )
 from ht_microduck.tasks.mdp import official_rewards

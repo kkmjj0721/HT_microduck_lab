@@ -1,5 +1,5 @@
 # Copyright (c) 2026-2027 zh
-"""官方 sitstand 任务配方的 HT 适配；奖励、重置和课程对应 bae39f59。
+"""官方 standup 任务配方的 HT 适配；奖励、重置和课程对应 bae39f59。
 
 来源：pollen-robotics/microduck_rl，Apache-2.0。
 只替换机器人命名、实体关节索引、已确认的姿态常量和 mjlab 1.6 接口。
@@ -20,46 +20,40 @@ from mjlab.managers import (
     RewardTermCfg,
     TerminationTermCfg,
 )
-from mjlab.managers.metrics_manager import MetricsTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.tasks.velocity import mdp
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 
 from ht_microduck.robot.ht_microduck_constants import get_ht_microduck_robot_cfg
-from ht_microduck.tasks.config.flat_velocity_env_cfg import (
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
+    BODY_POSE_CMD_RESAMPLE_S,
     HEAD_BODY_NAMES,
     HEAD_POSE_CMD_RESAMPLE_S,
     MICRODUCK_ROUGH_TERRAINS_CFG,
 )
-from ht_microduck.tasks.config.official_common import make_official_base_env_cfg
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks.config.ht_microduck.official_common import (
+    make_official_base_env_cfg,
+)
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     HEAD_JOINT_INDICES as _HT_HEAD_INDICES,
 )
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     LEG_JOINT_INDICES as _HT_LEG_INDICES,
 )
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     SIT_Z as _HT_SIT_Z,
 )
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     SITTING_JOINT_OVERRIDES as _HT_SITTING_OVERRIDES,
 )
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     STAND_Z as _HT_STAND_Z,
 )
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     adapt_official_cfg,
 )
 from ht_microduck.tasks.mdp import official as microduck_mdp
-from ht_microduck.tasks.mdp.action_metrics import (
-    ActuatorSaturationDuration,
-    actuator_saturation_fraction,
-    applied_target_violation_fraction,
-    requested_target_violation_fraction,
-    target_clip_fraction,
-)
-from ht_microduck.tasks.mdp.actions import BoundedJointPositionActionCfg
 
 ENABLE_SYMMETRY = False
 ENABLE_COM_RANDOMIZATION = True
@@ -83,36 +77,29 @@ KD_RANDOMIZATION_RANGE = (0.9, 1.1)
 VELOCITY_PUSH_INTERVAL_S = (3.0, 6.0)
 VELOCITY_PUSH_RANGE = (-0.3, 0.3)
 IMU_ORIENTATION_RANDOMIZATION_ANGLE = 6.0
-EPISODE_LENGTH_S = 12.0
-POSTURE_DWELL_S = (3.5, 6.5)
-SIT_PROB = 0.5
-SITTING_TARGET_OVERRIDES = _HT_SITTING_OVERRIDES
+EPISODE_LENGTH_S = 6.0
+SITTING_JOINT_OVERRIDES = _HT_SITTING_OVERRIDES
 _LEG_JOINTS = _HT_LEG_INDICES
 _NECK_JOINTS = _HT_HEAD_INDICES
-STAND_Z = _HT_STAND_Z
 SIT_Z = _HT_SIT_Z
-# 区间内门限保持官方坐高 .060、站高 .115 之间的相对位置。
-_HEIGHT_RANGE_SCALE = (STAND_Z - SIT_Z) / (0.115 - 0.060)
-STAND_UPRIGHT_Z = SIT_Z + (0.100 - 0.060) * _HEIGHT_RANGE_SCALE
-SIT_UPRIGHT_Z = SIT_Z + (0.075 - 0.060) * _HEIGHT_RANGE_SCALE
-# 起身末端的 1 cm 余量保持物理距离，不随坐站行程缩放。
-RISE_BOOTSTRAP_MAX_HEIGHT = STAND_Z + (0.125 - 0.115)
-POSTURE_RAMP_S = 2.0
-MAX_DESCENT_SPEED = 0.05
-MAX_RISE_SPEED = 0.08
-ENABLE_SEATED_FALLBACK_HARDENING = True
-SEATED_HEAD_JERK_INTERVAL_S = (0.3, 0.8)
-SEATED_TIP_INTERVAL_S = (3.0, 6.0)
+STAND_Z = _HT_STAND_Z
+ENABLE_BODY_CONTROL = True
+BODY_CMD_MAX_Z_DOWN = 0.04
+BODY_CMD_MAX_Z_UP = 0.03
+BODY_CMD_MAX_ANGLE = math.radians(15)
+BODY_CMD_ALIVE_XY = 0.005
+BODY_CMD_ALIVE_ANGLE = 0.05
+BODY_CMD_ZERO_PROB = 0.3
 
 
-def make_sitstand_env_cfg(
+def make_standup_env_cfg(
     num_envs: int = 4096,
     seed: int | None = None,
     play: bool = False,
     *,
     rough: bool = False,
-    bound_targets: bool = True,
 ) -> ManagerBasedRlEnvCfg:
+    _site_names = ["left_foot", "right_foot"]
     feet_ground_cfg = ContactSensorCfg(
         name="feet_ground_contact",
         primary=ContactMatch(
@@ -154,124 +141,124 @@ def make_sitstand_env_cfg(
     ]:
         if name in cfg.rewards:
             del cfg.rewards[name]
-    cfg.rewards["posture_pose_legs"] = RewardTermCfg(
-        func=microduck_mdp.posture_pose_match,
-        weight=4.0,
-        params={
-            "command_name": "twist",
-            "std": 0.5,
-            "joint_indices": _LEG_JOINTS,
-            "sit_overrides": SITTING_TARGET_OVERRIDES,
-        },
+    cfg.rewards["pose_stand_legs"] = RewardTermCfg(
+        func=microduck_mdp.pose_target_match,
+        weight=2.0,
+        params={"std": 0.5, "joint_indices": _LEG_JOINTS, "target_overrides": None},
     )
     cfg.rewards["head_pose_tracking"] = RewardTermCfg(
         func=microduck_mdp.head_pose_tracking,
         weight=0.75,
         params={"command_name": "head_pose", "std": 0.5},
     )
-    cfg.rewards["posture_pose_l1"] = RewardTermCfg(
-        func=microduck_mdp.posture_pose_l1,
-        weight=1.0,
-        params={
-            "command_name": "twist",
-            "joint_indices": _LEG_JOINTS,
-            "sit_overrides": SITTING_TARGET_OVERRIDES,
-        },
-    )
-    cfg.rewards["posture_height"] = RewardTermCfg(
-        func=microduck_mdp.posture_height_gaussian,
-        weight=1.0,
-        params={
-            "command_name": "twist",
-            "sit_z": SIT_Z,
-            "stand_z": STAND_Z,
-            "std": 0.04,
-        },
-    )
-    cfg.rewards["posture_height_sharp"] = RewardTermCfg(
-        func=microduck_mdp.posture_height_gaussian,
-        weight=1.0,
-        params={
-            "command_name": "twist",
-            "sit_z": SIT_Z,
-            "stand_z": STAND_Z,
-            "std": 0.015,
-        },
-    )
-    cfg.rewards["posture_height_l1"] = RewardTermCfg(
-        func=microduck_mdp.posture_height_l1,
-        weight=6.0,
-        params={"command_name": "twist", "sit_z": SIT_Z, "stand_z": STAND_Z},
-    )
-    cfg.rewards["rise_bootstrap"] = RewardTermCfg(
-        func=microduck_mdp.posture_rise_bootstrap,
-        weight=0.75,
-        params={"command_name": "twist", "max_height": RISE_BOOTSTRAP_MAX_HEIGHT, "max_vz": MAX_RISE_SPEED},
-    )
-    cfg.rewards["descent_speed"] = RewardTermCfg(
-        func=microduck_mdp.trunk_downward_velocity_penalty,
-        weight=10.0,
-        params={
-            "max_down_vel": MAX_DESCENT_SPEED,
-            "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
-        },
-    )
-    cfg.rewards["rise_speed"] = RewardTermCfg(
-        func=microduck_mdp.trunk_upward_velocity_penalty,
+    cfg.rewards["head_pose_bias"] = RewardTermCfg(
+        func=microduck_mdp.head_pose_bias_penalty,
         weight=0.0,
         params={
-            "max_up_vel": MAX_RISE_SPEED,
+            "command_name": "head_pose",
+            "tau_s": 1.0,
+            "gate_height_low": 0.09,
+            "gate_height_high": 0.11,
+            "gate_tilt_full_deg": 20.0,
+            "gate_tilt_zero_deg": 45.0,
+        },
+    )
+    cfg.rewards["pose_stand_l1"] = RewardTermCfg(
+        func=microduck_mdp.pose_l1_penalty,
+        weight=1.25,
+        params={"joint_indices": _LEG_JOINTS, "target_overrides": None},
+    )
+    cfg.rewards["height_stand"] = RewardTermCfg(
+        func=microduck_mdp.height_target_gaussian,
+        weight=1.0,
+        params={
+            "std": 0.04,
+            "target_height": STAND_Z,
             "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
         },
     )
-    cfg.rewards["gentle_motion"] = RewardTermCfg(
+    cfg.rewards["height_stand_sharp"] = RewardTermCfg(
+        func=microduck_mdp.height_target_gaussian,
+        weight=1.0,
+        params={
+            "std": 0.015,
+            "target_height": STAND_Z,
+            "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
+        },
+    )
+    cfg.rewards["height_stand_l1"] = RewardTermCfg(
+        func=microduck_mdp.height_l1_penalty,
+        weight=7.5,
+        params={
+            "target_height": STAND_Z,
+            "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
+        },
+    )
+    cfg.rewards["com_upward_velocity"] = RewardTermCfg(
+        func=microduck_mdp.com_upward_velocity,
+        weight=0.75,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
+            "max_height": 0.125,
+        },
+    )
+    cfg.rewards["gentle_rise"] = RewardTermCfg(
         func=microduck_mdp.trunk_vertical_accel_penalty,
-        weight=0.05,
+        weight=0.005,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",))},
+    )
+    cfg.rewards["arrival_damping"] = RewardTermCfg(
+        func=microduck_mdp.body_ang_vel_at_height,
+        weight=0.0,
+        params={
+            "height_low": 0.09,
+            "height_high": 0.11,
+            "tilt_full_deg": 20.0,
+            "tilt_zero_deg": 45.0,
+            "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
+        },
     )
     cfg.rewards["upright_linear"] = RewardTermCfg(
         func=microduck_mdp.body_upright_linear,
-        weight=2.5,
+        weight=1.5,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",))},
     )
-    cfg.rewards["upright_while_tall"] = RewardTermCfg(
-        func=microduck_mdp.upright_while_tall,
+    cfg.rewards["upright_sharp"] = RewardTermCfg(
+        func=microduck_mdp.upright_gaussian_at_height,
         weight=1.5,
         params={
-            "height_low": SIT_UPRIGHT_Z,
-            "height_high": STAND_UPRIGHT_Z,
+            "std": 0.3,
+            "height_low": SIT_Z,
+            "height_high": STAND_Z,
             "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
         },
     )
-    cfg.rewards["posture_stillness"] = RewardTermCfg(
-        func=microduck_mdp.posture_stillness,
-        weight=2.0,
+    cfg.rewards["standing_composite"] = RewardTermCfg(
+        func=microduck_mdp.standing_composite_score,
+        weight=3.75,
         params={
-            "command_name": "twist",
-            "sit_z": SIT_Z,
-            "stand_z": STAND_Z,
-            "band_full": 0.012,
-            "band_zero": 0.03,
-            "vel_std": 0.05,
-            "tilt_full_deg": 25.0,
-            "tilt_zero_deg": 60.0,
-        },
-    )
-    cfg.rewards["posture_composite"] = RewardTermCfg(
-        func=microduck_mdp.posture_composite,
-        weight=3.0,
-        params={
-            "command_name": "twist",
-            "sit_overrides": SITTING_TARGET_OVERRIDES,
-            "joint_indices": _LEG_JOINTS,
-            "sit_z": SIT_Z,
-            "stand_z": STAND_Z,
-            "height_std": 0.03,
+            "target_height": STAND_Z,
+            "height_std": 0.04,
             "upright_std": 0.4,
             "pose_std": 0.4,
-            "head_std": 0.4,
+            "joint_indices": _LEG_JOINTS,
+            "target_overrides": None,
+            "asset_cfg": SceneEntityCfg("robot", body_names=("trunk_base",)),
         },
     )
+    if ENABLE_BODY_CONTROL:
+        cfg.rewards["body_pose_tracking"] = RewardTermCfg(
+            func=microduck_mdp.body_pose_tracking_locomotion,
+            weight=0.0,
+            params={
+                "command_name": "body_pose",
+                "nominal_height": STAND_Z,
+                "z_std": 0.01,
+                "angle_std": math.radians(5),
+                "axis_weights": (0.0, 0.0, 1.0, 1.0, 1.0, 0.0),
+                "vel_gate_command_name": None,
+            },
+        )
     cfg.rewards["action_rate_l2"] = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.1)
     cfg.rewards["joint_torque_rate_l2"] = RewardTermCfg(
         func=microduck_mdp.joint_torque_rate_l2, weight=0.0
@@ -280,17 +267,6 @@ def make_sitstand_env_cfg(
     cfg.rewards["body_ang_vel"].weight = -0.05
     cfg.rewards["angular_momentum"].weight = -0.02
     cfg.rewards.pop("soft_landing", None)
-    if ENABLE_SEATED_FALLBACK_HARDENING:
-        cfg.rewards["neck_strain_leaned"] = RewardTermCfg(
-            func=microduck_mdp.neck_torque_when_tilted,
-            weight=-0.5,
-            params={
-                "command_name": "twist",
-                "tilt_start_deg": 12.0,
-                "tilt_full_deg": 25.0,
-                "torque_scale": 0.1,
-            },
-        )
     cfg.rewards["self_collisions"] = RewardTermCfg(
         func=mdp.self_collision_cost,
         weight=-1.0,
@@ -305,6 +281,12 @@ def make_sitstand_env_cfg(
     del cfg.observations["critic"].terms["foot_height"]
     del cfg.observations["actor"].terms["height_scan"]
     del cfg.observations["critic"].terms["height_scan"]
+    for _term, _safe in (
+        ("foot_contact_forces", microduck_mdp.foot_contact_forces_safe),
+        ("foot_air_time", microduck_mdp.foot_air_time_safe),
+    ):
+        if _term in cfg.observations["critic"].terms:
+            cfg.observations["critic"].terms[_term].func = _safe
     gravity_term_name = "projected_gravity"
     cfg.observations["actor"].terms[gravity_term_name] = deepcopy(
         cfg.observations["actor"].terms[gravity_term_name]
@@ -360,33 +342,48 @@ def make_sitstand_env_cfg(
         resampling_time_range=HEAD_POSE_CMD_RESAMPLE_S,
         ranges=((-0.05, 0.05), (-0.05, 0.05), (-0.07, 0.07), (-0.015, 0.015)),
     )
+    if ENABLE_BODY_CONTROL:
+        cfg.commands["body_pose"] = microduck_mdp.UniformPoseCommandCfg(
+            resampling_time_range=BODY_POSE_CMD_RESAMPLE_S,
+            zero_command_prob=BODY_CMD_ZERO_PROB,
+            ranges=(
+                (-BODY_CMD_ALIVE_XY, BODY_CMD_ALIVE_XY),
+                (-BODY_CMD_ALIVE_XY, BODY_CMD_ALIVE_XY),
+                (-0.005, 0.005),
+                (-BODY_CMD_ALIVE_ANGLE, BODY_CMD_ALIVE_ANGLE),
+                (-BODY_CMD_ALIVE_ANGLE, BODY_CMD_ALIVE_ANGLE),
+                (-BODY_CMD_ALIVE_ANGLE, BODY_CMD_ALIVE_ANGLE),
+            ),
+        )
     for group in ("actor", "critic"):
         cfg.observations[group].terms["head_command"] = ObservationTermCfg(
             func=mdp.generated_commands, params={"command_name": "head_pose"}
         )
-        cfg.observations[group].terms["body_command"] = ObservationTermCfg(
-            func=microduck_mdp.zero_command_padding, params={"dim": 6}
-        )
+        if ENABLE_BODY_CONTROL:
+            cfg.observations[group].terms["body_command"] = ObservationTermCfg(
+                func=mdp.generated_commands, params={"command_name": "body_pose"}
+            )
+        else:
+            cfg.observations[group].terms["body_command"] = ObservationTermCfg(
+                func=microduck_mdp.zero_command_padding, params={"dim": 6}
+            )
     command = cfg.commands["twist"]
     command.rel_standing_envs = 0.0
     command.rel_heading_envs = 0.0
     command.heading_command = False
     command.ranges.heading = None
-    command.resampling_time_range = POSTURE_DWELL_S
+    command.resampling_time_range = (EPISODE_LENGTH_S, EPISODE_LENGTH_S * 2)
     command.debug_vis = False
-    cfg.commands["twist"] = microduck_mdp.SitStandCommandCfg(
-        **{
-            **vars(command),
-            "sit_prob": SIT_PROB,
-            "ramp_s": POSTURE_RAMP_S,
-            "sit_z": SIT_Z,
-            "stand_z": STAND_Z,
-        }
-    )
+    command.ranges.lin_vel_x = (-0.01, 0.01)
+    command.ranges.lin_vel_y = (-0.01, 0.01)
+    command.ranges.ang_vel_z = (-0.05, 0.05)
+    cfg.commands["twist"] = microduck_mdp.VelocityCommandCommandOnlyCfg(**vars(command))
     if "fell_over" in cfg.terminations:
         del cfg.terminations["fell_over"]
     cfg.terminations["nan_state"] = TerminationTermCfg(
-        func=microduck_mdp.robot_state_is_nan, time_out=False
+        func=microduck_mdp.robot_state_is_nan,
+        time_out=False,
+        params={"sensor_names": ("feet_ground_contact",)},
     )
     cfg.events["expand_bam_friction_fields"] = EventTermCfg(
         func=microduck_mdp.expand_bam_friction_fields, mode="startup"
@@ -398,27 +395,26 @@ def make_sitstand_env_cfg(
         "asset_cfg"
     ].geom_names = foot_frictions_geom_names
     cfg.events["foot_friction"].params["ranges"] = (0.7, 1.3)
-    cfg.events["reset_base"].params["pose_range"]["z"] = (0.11, 0.12)
     cfg.events["set_ground_state"] = EventTermCfg(
         func=microduck_mdp.set_random_ground_state,
         mode="reset",
         params={
-            "face_down_prob": 0.0,
+            "face_down_prob": 0.2,
             "face_up_prob": 0.0,
-            "sitting_prob": 0.5,
-            "standing_prob": 0.5,
-            "sitting_joint_overrides": SITTING_TARGET_OVERRIDES,
-            "sitting_joint_noise_std": 0.1,
-            "sitting_tilt_max": math.radians(8),
-            "sitting_z_min": 0.06,
-            "sitting_z_max": 0.075,
+            "sitting_prob": 0.4,
+            "standing_prob": 0.4,
+            "prone_z_min": 0.05,
+            "prone_z_max": 0.09,
+            "face_up_roll_max": math.radians(90),
+            "sitting_joint_overrides": SITTING_JOINT_OVERRIDES,
+            "sitting_joint_noise_std": 0.12,
+            "sitting_tilt_max": math.radians(10),
+            "sitting_z_min": 0.05,
+            "sitting_z_max": 0.09,
             "standing_z_min": 0.11,
             "standing_z_max": 0.12,
         },
     )
-    cfg.sim.nconmax = 200
-    cfg.sim.mujoco.iterations = 30
-    cfg.sim.mujoco.ls_iterations = 50
     if ENABLE_VELOCITY_PUSHES:
         interval = (0.5, 1.0) if play else VELOCITY_PUSH_INTERVAL_S
         cfg.events["push_robot"] = EventTermCfg(
@@ -429,19 +425,6 @@ def make_sitstand_env_cfg(
                 "velocity_range": {"x": VELOCITY_PUSH_RANGE, "y": VELOCITY_PUSH_RANGE},
                 "asset_cfg": SceneEntityCfg("robot"),
             },
-        )
-    if ENABLE_SEATED_FALLBACK_HARDENING:
-        cfg.events["seated_head_jerk"] = EventTermCfg(
-            func=microduck_mdp.seated_head_command_jerk,
-            mode="interval",
-            interval_range_s=SEATED_HEAD_JERK_INTERVAL_S,
-            params={"prob": 0.0, "flip_frac": 0.5},
-        )
-        cfg.events["seated_tip"] = EventTermCfg(
-            func=microduck_mdp.seated_backward_tip,
-            mode="interval",
-            interval_range_s=SEATED_TIP_INTERVAL_S,
-            params={"ang_vel_range": (0.0, 0.0), "prob": 0.5, "lateral_frac": 0.3},
         )
     if ENABLE_COM_RANDOMIZATION:
         cfg.events["randomize_com"] = EventTermCfg(
@@ -518,6 +501,50 @@ def make_sitstand_env_cfg(
     if not rough:
         del cfg.curriculum["terrain_levels"]
     del cfg.curriculum["command_vel"]
+    cfg.curriculum["ground_state_mix"] = CurriculumTermCfg(
+        func=microduck_mdp.event_param_curriculum,
+        params={
+            "event_name": "set_ground_state",
+            "param_stages": [
+                {
+                    "step": 0,
+                    "params": {
+                        "standing_prob": 0.4,
+                        "sitting_prob": 0.4,
+                        "face_down_prob": 0.2,
+                        "face_up_prob": 0.0,
+                    },
+                },
+                {
+                    "step": 600 * 24,
+                    "params": {
+                        "standing_prob": 0.25,
+                        "sitting_prob": 0.3,
+                        "face_down_prob": 0.35,
+                        "face_up_prob": 0.1,
+                    },
+                },
+                {
+                    "step": 1500 * 24,
+                    "params": {
+                        "standing_prob": 0.2,
+                        "sitting_prob": 0.25,
+                        "face_down_prob": 0.3,
+                        "face_up_prob": 0.25,
+                    },
+                },
+                {
+                    "step": 2500 * 24,
+                    "params": {
+                        "standing_prob": 0.15,
+                        "sitting_prob": 0.2,
+                        "face_down_prob": 0.3,
+                        "face_up_prob": 0.35,
+                    },
+                },
+            ],
+        },
+    )
     cfg.curriculum["head_pose_range"] = CurriculumTermCfg(
         func=microduck_mdp.pose_command_range_curriculum,
         params={
@@ -599,19 +626,11 @@ def make_sitstand_env_cfg(
                 "push_stages": [
                     {"step": 0, "velocity_range": {"x": (0.0, 0.0), "y": (0.0, 0.0)}},
                     {
+                        "step": 500 * 24,
+                        "velocity_range": {"x": (-0.08, 0.08), "y": (-0.08, 0.08)},
+                    },
+                    {
                         "step": 1000 * 24,
-                        "velocity_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05)},
-                    },
-                    {
-                        "step": 1500 * 24,
-                        "velocity_range": {"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
-                    },
-                    {
-                        "step": 2000 * 24,
-                        "velocity_range": {"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
-                    },
-                    {
-                        "step": 2500 * 24,
                         "velocity_range": {
                             "x": VELOCITY_PUSH_RANGE,
                             "y": VELOCITY_PUSH_RANGE,
@@ -634,86 +653,140 @@ def make_sitstand_env_cfg(
             ],
         },
     )
-    cfg.curriculum["descent_speed_weight"] = CurriculumTermCfg(
+    cfg.curriculum["arrival_damping_weight"] = CurriculumTermCfg(
         func=microduck_mdp.reward_weight,
         params={
-            "reward_name": "descent_speed",
-            "weight_stages": [
-                {"step": 0, "weight": 10.0},
-                {"step": 500 * 24, "weight": 20.0},
-            ],
-        },
-    )
-    cfg.curriculum["rise_speed_weight"] = CurriculumTermCfg(
-        func=microduck_mdp.reward_weight,
-        params={
-            "reward_name": "rise_speed",
+            "reward_name": "arrival_damping",
             "weight_stages": [
                 {"step": 0, "weight": 0.0},
-                {"step": 1500 * 24, "weight": 5.0},
-                {"step": 2500 * 24, "weight": 10.0},
+                {"step": 3000 * 24, "weight": -0.025},
+                {"step": 4000 * 24, "weight": -0.05},
             ],
         },
     )
-    if ENABLE_SEATED_FALLBACK_HARDENING:
-        cfg.curriculum["seated_head_jerk_prob"] = CurriculumTermCfg(
-            func=microduck_mdp.event_param_curriculum,
-            params={
-                "event_name": "seated_head_jerk",
-                "param_stages": [
-                    {"step": 0, "params": {"prob": 0.0}},
-                    {"step": 1500 * 24, "params": {"prob": 0.2}},
-                    {"step": 2000 * 24, "params": {"prob": 0.4}},
-                ],
-            },
-        )
-        cfg.curriculum["seated_tip_range"] = CurriculumTermCfg(
-            func=microduck_mdp.event_param_curriculum,
-            params={
-                "event_name": "seated_tip",
-                "param_stages": [
-                    {"step": 0, "params": {"ang_vel_range": (0.0, 0.0)}},
-                    {"step": 1500 * 24, "params": {"ang_vel_range": (1.0, 2.5)}},
-                    {"step": 2000 * 24, "params": {"ang_vel_range": (1.5, 3.25)}},
-                    {"step": 2500 * 24, "params": {"ang_vel_range": (2.0, 4.0)}},
-                ],
-            },
-        )
+    cfg.curriculum["head_pose_bias_weight"] = CurriculumTermCfg(
+        func=microduck_mdp.reward_weight,
+        params={
+            "reward_name": "head_pose_bias",
+            "weight_stages": [
+                {"step": 0, "weight": 0.0},
+                {"step": 3000 * 24, "weight": 0.5},
+                {"step": 4000 * 24, "weight": 1.5},
+            ],
+        },
+    )
     cfg.curriculum["torque_rate_weight"] = CurriculumTermCfg(
         func=microduck_mdp.reward_weight,
         params={
             "reward_name": "joint_torque_rate_l2",
             "weight_stages": [
                 {"step": 0, "weight": 0.0},
-                {"step": 750 * 24, "weight": -0.0005},
-                {"step": 1250 * 24, "weight": -0.001},
+                {"step": 3000 * 24, "weight": -0.001},
             ],
         },
     )
-    cfg = adapt_official_cfg(cfg, num_envs, seed)
-    cfg.actions["joint_pos"] = BoundedJointPositionActionCfg(
-        **vars(cfg.actions["joint_pos"]), bound_targets=bound_targets
+    if not ENABLE_BODY_CONTROL:
+        return adapt_official_cfg(cfg, num_envs, seed)
+    cfg.curriculum["body_pose_tracking_weight"] = CurriculumTermCfg(
+        func=microduck_mdp.reward_weight,
+        params={
+            "reward_name": "body_pose_tracking",
+            "weight_stages": [
+                {"step": 0, "weight": 0.0},
+                {"step": 2500 * 24, "weight": 1.5},
+                {"step": 3000 * 24, "weight": 3.0},
+                {"step": 4000 * 24, "weight": 4.0},
+            ],
+        },
     )
-    cfg.metrics.update({
-        "requested_target_outside_limits": MetricsTermCfg(func=requested_target_violation_fraction),
-        "applied_target_outside_limits": MetricsTermCfg(func=applied_target_violation_fraction),
-        "target_clip_fraction": MetricsTermCfg(func=target_clip_fraction),
-    })
-    for name, func, reduce in (
-        ("actuator_saturation_fraction", actuator_saturation_fraction, "mean"),
-        ("actuator_saturation_duration", ActuatorSaturationDuration, "max"),
-    ):
-        cfg.metrics[name] = MetricsTermCfg(
-            func=func,
-            params={
-                "asset_cfg": SceneEntityCfg(
-                    "robot", actuator_names=list(cfg.actions["joint_pos"].actuator_names), preserve_order=True
-                ),
-                "ratio": 0.95,
-            },
-            reduce=reduce,
-        )
-    return cfg
+    _alive_xy = (-BODY_CMD_ALIVE_XY, BODY_CMD_ALIVE_XY)
+    _alive_ang = (-BODY_CMD_ALIVE_ANGLE, BODY_CMD_ALIVE_ANGLE)
+    cfg.curriculum["body_pose_range"] = CurriculumTermCfg(
+        func=microduck_mdp.pose_command_range_curriculum,
+        params={
+            "command_name": "body_pose",
+            "range_stages": [
+                {
+                    "step": 0,
+                    "ranges": (
+                        _alive_xy,
+                        _alive_xy,
+                        (-0.005, 0.005),
+                        _alive_ang,
+                        _alive_ang,
+                        _alive_ang,
+                    ),
+                },
+                {
+                    "step": 2500 * 24,
+                    "ranges": (
+                        _alive_xy,
+                        _alive_xy,
+                        (-0.01, 0.005),
+                        (-math.radians(8), math.radians(8)),
+                        (-math.radians(8), math.radians(8)),
+                        _alive_ang,
+                    ),
+                },
+                {
+                    "step": 3000 * 24,
+                    "ranges": (
+                        _alive_xy,
+                        _alive_xy,
+                        (-0.018, 0.008),
+                        (-math.radians(12), math.radians(12)),
+                        (-math.radians(12), math.radians(12)),
+                        _alive_ang,
+                    ),
+                },
+                {
+                    "step": 4000 * 24,
+                    "ranges": (
+                        _alive_xy,
+                        _alive_xy,
+                        (-BODY_CMD_MAX_Z_DOWN, BODY_CMD_MAX_Z_UP),
+                        (-BODY_CMD_MAX_ANGLE, BODY_CMD_MAX_ANGLE),
+                        (-BODY_CMD_MAX_ANGLE, BODY_CMD_MAX_ANGLE),
+                        _alive_ang,
+                    ),
+                },
+            ],
+        },
+    )
+    cfg.curriculum["height_stand_sharp_weight"] = CurriculumTermCfg(
+        func=microduck_mdp.reward_weight,
+        params={
+            "reward_name": "height_stand_sharp",
+            "weight_stages": [
+                {"step": 0, "weight": 1.0},
+                {"step": 3000 * 24, "weight": 0.5},
+                {"step": 4000 * 24, "weight": 0.2},
+            ],
+        },
+    )
+    cfg.curriculum["upright_sharp_weight"] = CurriculumTermCfg(
+        func=microduck_mdp.reward_weight,
+        params={
+            "reward_name": "upright_sharp",
+            "weight_stages": [
+                {"step": 0, "weight": 1.5},
+                {"step": 3000 * 24, "weight": 1.0},
+                {"step": 4000 * 24, "weight": 0.5},
+            ],
+        },
+    )
+    cfg.curriculum["standing_composite_weight"] = CurriculumTermCfg(
+        func=microduck_mdp.reward_weight,
+        params={
+            "reward_name": "standing_composite",
+            "weight_stages": [
+                {"step": 0, "weight": 3.75},
+                {"step": 3000 * 24, "weight": 2.5},
+                {"step": 4000 * 24, "weight": 1.5},
+            ],
+        },
+    )
+    return adapt_official_cfg(cfg, num_envs, seed)
 
 
-__all__ = ["make_sitstand_env_cfg"]
+__all__ = ["make_standup_env_cfg"]

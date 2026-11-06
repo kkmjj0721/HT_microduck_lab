@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 from ht_microduck.tasks.mdp.forward_behavior import forward_posture_valid
 from ht_microduck.tasks.mdp.forward_commands import (
     FORWARD_STAGES,

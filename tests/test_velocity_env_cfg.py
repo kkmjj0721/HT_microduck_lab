@@ -6,8 +6,10 @@ These do not build a MuJoCo environment, so they stay fast and run inside
 
 from __future__ import annotations
 
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_velocity_env_cfg import make_flat_velocity_env_cfg
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
+    make_flat_velocity_env_cfg,
+)
 from ht_microduck.tasks.mdp.observations import (
     ROBOT,
     SELF_COLLISION_SENSOR,
@@ -68,9 +70,15 @@ def test_velocity_task_head_pose_slot_width_matches_the_contract():
 
 
 def test_official_tasks_use_unit_actions_and_keep_legacy_velstand_mapping():
-    from ht_microduck.tasks.config.flat_sitstand_env_cfg import make_sitstand_env_cfg
-    from ht_microduck.tasks.config.flat_standup_env_cfg import make_standup_env_cfg
-    from ht_microduck.tasks.config.flat_velstand_env_cfg import make_velstand_env_cfg
+    from ht_microduck.tasks.config.ht_microduck.flat_sitstand_env_cfg import (
+        make_sitstand_env_cfg,
+    )
+    from ht_microduck.tasks.config.ht_microduck.flat_standup_env_cfg import (
+        make_standup_env_cfg,
+    )
+    from ht_microduck.tasks.config.ht_microduck.flat_velstand_env_cfg import (
+        make_velstand_env_cfg,
+    )
 
     cfg = make_flat_velocity_env_cfg(num_envs=1, seed=0)
     assert cfg.actions["joint_pos"].scale == 1.0
@@ -104,7 +112,9 @@ def test_air_time_sensor_and_play_disturbance_follow_the_official_recipe():
 def test_official_velocity_uses_leg_pose_without_local_extra_costs():
     from mjlab.tasks.velocity import mdp as velocity_mdp
 
-    from ht_microduck.tasks.config.flat_velstand_env_cfg import make_velstand_env_cfg
+    from ht_microduck.tasks.config.ht_microduck.flat_velstand_env_cfg import (
+        make_velstand_env_cfg,
+    )
 
     for play in (False, True):
         cfg = make_flat_velocity_env_cfg(num_envs=1, seed=0, play=play)

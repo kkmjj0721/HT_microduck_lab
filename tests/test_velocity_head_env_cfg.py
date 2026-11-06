@@ -20,13 +20,18 @@ from ht_microduck.tasks import (
     FLAT_VELOCITY_TASK_ID,
     _assert_task_contract,
 )
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_velocity_env_cfg import make_flat_velocity_env_cfg
-from ht_microduck.tasks.config.flat_velocity_head_env_cfg import (
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
+    make_flat_velocity_env_cfg,
+)
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_head_env_cfg import (
     HEAD_POSE_RANGE_STAGES,
     make_flat_velocity_head_env_cfg,
 )
-from ht_microduck.tasks.config.rl_cfg import FlatVelocityRlCfg, VelocityHeadRlCfg
+from ht_microduck.tasks.config.ht_microduck.rl_cfg import (
+    FlatVelocityRlCfg,
+    VelocityHeadRlCfg,
+)
 from ht_microduck.tasks.rl.runner import (
     OfficialTaskOnPolicyRunner,
     VelocityHeadOnPolicyRunner,

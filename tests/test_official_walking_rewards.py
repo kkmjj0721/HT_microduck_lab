@@ -10,11 +10,11 @@ from mjlab.managers.reward_manager import RewardManager
 from mjlab.sensor.terrain_height_sensor import TerrainHeightSensor
 from mjlab.tasks.velocity.mdp import feet_swing_height as MjlabFeetSwingHeight
 
-from ht_microduck.tasks.config.flat_velocity_env_cfg import (
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
     FOOT_HEIGHT_SENSOR,
     make_flat_velocity_env_cfg,
 )
-from ht_microduck.tasks.config.rl_cfg import FlatVelocityRlCfg
+from ht_microduck.tasks.config.ht_microduck.rl_cfg import FlatVelocityRlCfg
 from ht_microduck.tasks.mdp.observations import FEET_SENSOR, FOOT_SITE_NAMES, ROBOT
 from ht_microduck.tasks.mdp.rewards import feet_swing_height as LegacyFeetSwingHeight
 
@@ -216,9 +216,15 @@ def test_head_bias_curriculum_changes_real_manager_weights_at_iteration_boundari
 
 
 def test_official_walking_terms_keep_legacy_velstand_and_posture_sensor_boundaries():
-    from ht_microduck.tasks.config.flat_sitstand_env_cfg import make_sitstand_env_cfg
-    from ht_microduck.tasks.config.flat_standup_env_cfg import make_standup_env_cfg
-    from ht_microduck.tasks.config.flat_velstand_env_cfg import make_velstand_env_cfg
+    from ht_microduck.tasks.config.ht_microduck.flat_sitstand_env_cfg import (
+        make_sitstand_env_cfg,
+    )
+    from ht_microduck.tasks.config.ht_microduck.flat_standup_env_cfg import (
+        make_standup_env_cfg,
+    )
+    from ht_microduck.tasks.config.ht_microduck.flat_velstand_env_cfg import (
+        make_velstand_env_cfg,
+    )
 
     velocity = make_flat_velocity_env_cfg(num_envs=1, seed=0)
     extra_terms = {"body_ang_vel", "angular_momentum", "foot_swing_height", "head_pose_bias"}

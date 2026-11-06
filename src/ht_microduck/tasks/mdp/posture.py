@@ -1,49 +1,18 @@
-"""Posture MDP terms shared by the stand-up, sit-stand and vel-stand tasks.
+# Copyright (c) 2026-2027 zh
+"""VelStand 使用的姿态、倒地恢复奖励与回合状态重置。
 
-Each function here is a reward, termination, event or command term that the
-posture tasks need and the walking task does not. Three families live side by
-side:
-
-- **Potential-based progress** (``upright_progress``, ``height_progress``). These
-  return the *change* in a bounded quantity between consecutive steps, so a
-  stationary robot earns exactly zero no matter which pose it holds. That is what
-  makes them safe: an absolute reward for "be upright and tall" also pays a robot
-  that is already upright, while a reward for *becoming* more upright cannot be
-  farmed by holding still. Every upstream run that awarded a positive term gated
-  on a bad state ended up farming that state (sitting, lying flat, or bracing on
-  the head at 55 degrees).
-
-- **Cost terms** (``body_impact_cost``, ``*_penalty``). These return a
-  non-negative magnitude, so the task config must give them a **negative**
-  weight. The exceptions whose function already returns a negative value are
-  marked ``POSITIVE weight`` at the call site; writing a negative weight there
-  flips a penalty into a reward for the exact behaviour it penalises. That sign
-  bug shipped twice upstream (a violent "crash sit" policy and a bouncing
-  get-up), so the convention is restated wherever it matters.
-
-- **Command terms** (``SitStandCommand``). A posture flag in the twist command's
-  first slot, with a slewed internal target: see the class docstring for why the
-  slew is the anti-crash mechanism rather than a nicety.
-
-All state reads go through ``Entity.data`` and every joint selection goes through
-``SceneEntityCfg`` name resolution, so the terms stay valid when the joint set or
-the actuator model changes.
+保留该任务的势函数进度、代价、终止和头部跟踪；其他姿态任务使用 official_* 模块。
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import torch
 from mjlab.entity import Entity
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from mjlab.tasks.velocity.mdp import (
-    UniformVelocityCommand,
-    UniformVelocityCommandCfg,
-    feet_air_time,
-)
+from mjlab.tasks.velocity.mdp import feet_air_time
 
 if TYPE_CHECKING:
     from mjlab.envs import ManagerBasedRlEnv
@@ -184,17 +153,6 @@ def _joint_ids(env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg) -> torch.Tenso
     return asset_cfg.joint_ids
 
 
-def _slot_of(asset: Entity, ids: list[int], joint_name: str) -> int:
-    """Position of ``joint_name`` inside a joint selection.
-
-    Reward terms address joints by name rather than by position on purpose: the policy
-    joint order and the model's joint order are different lists, and an index computed
-    against one applied to the other silently drives the wrong joint.
-    """
-    global_index = asset.joint_names.index(joint_name)
-    return ids.index(global_index)
-
-
 # ---------- fall detection ----------
 
 
@@ -255,31 +213,6 @@ def upright_body_cmd_relative(
     gravity = _asset(env, asset_cfg).data.projected_gravity_b
     error = torch.square(gravity[:, :2] - target).sum(dim=1)
     return torch.exp(-error / std**2)
-
-
-def fallen_mask(
-    env: ManagerBasedRlEnv,
-    gate_z_below: float,
-    gate_tilt_above_deg: float,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """Environments that are both low **and** tilted: i.e. genuinely fallen.
-
-    The two gates are ANDed, and that is not a detail. On this robot the seated keyframe
-    (0.0563 m) is *lower* than every lying posture (0.060-0.093 m), so "low" cannot mean
-    "fallen": the conjunction is what keeps the goal state of the sit task from being
-    classified as a failure. Height alone would also let a seated robot open a recovery
-    reward, which is how upstream taught a policy to sit down and bob instead of
-    standing up.
-
-    Tilt is the discriminating signal (1.3 deg seated, 4.3 deg standing, >=79 deg in
-    every measured fall), so in practice this is a tilt test with a penetration guard.
-    """
-    low = _trunk_height(env, asset_cfg) < gate_z_below
-    limit = torch.deg2rad(
-        torch.tensor(gate_tilt_above_deg, device=env.device, dtype=torch.float)
-    )
-    return low & (_tilt_rad(env, asset_cfg) > limit)
 
 
 def tilted_mask(
@@ -503,17 +436,6 @@ def trunk_downward_velocity_penalty(
     return -torch.clamp(-vz - max_down_vel, min=0.0)
 
 
-def trunk_upward_velocity_penalty(
-    env: ManagerBasedRlEnv,
-    max_up_vel: float,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """``-max(vz - cap, 0)``: the rising counterpart, deliberately looser."""
-    asset = _asset(env, asset_cfg)
-    vz = asset.data.root_link_lin_vel_w[:, 2]
-    return -torch.clamp(vz - max_up_vel, min=0.0)
-
-
 def action_rate_l2_fallen_scaled(
     env: ManagerBasedRlEnv,
     fallen_scale: float,
@@ -536,330 +458,6 @@ def action_rate_l2_fallen_scaled(
         torch.full_like(rate, fallen_scale),
         torch.ones_like(rate),
     )
-
-
-# ---------- posture commands ----------
-
-
-@dataclass(kw_only=True)
-class SitStandCommandCfg(UniformVelocityCommandCfg):
-    """Command term config for a posture flag rather than a velocity.
-
-    ``ranges`` is inherited but unused: the flag is sampled from ``sit_prob`` and the
-    other two components are held at zero, so the twist slot keeps its 3-wide shape.
-    """
-
-    sit_prob: float = 0.5
-    ramp_s: float = 2.0
-    sit_z: float = 0.075
-    stand_z: float = 0.1534
-
-    def build(self, env: ManagerBasedRlEnv) -> "SitStandCommand":
-        return SitStandCommand(self, env)
-
-
-class SitStandCommand(UniformVelocityCommand):
-    """Posture command: ``cmd = [sit_flag, 0, 0]`` with a slewed internal target.
-
-    ``sit_flag`` is binary (0 = stand, 1 = sit) and is what the observation
-    carries, so the deployed runtime writes a plain 0 or 1. ``alpha`` is the
-    internal target blend and slews towards the flag at a constant rate, taking
-    ``ramp_s`` for a full transition; the posture rewards track ``alpha``, not the
-    flag.
-
-    The slew is the anti-crash mechanism, not a smoothing nicety. With a binary
-    target, arriving early collects the whole goal-state payout for every step
-    saved, while a speed-cap penalty only integrates a bounded excess-distance
-    cost — measured upstream, dropping instantly beat a one-second descent by
-    about seven times, and the policy learned to slam down. With a moving target,
-    being *ahead* of the ramp scores near zero on the height and composite terms,
-    so following the slow setpoint is the best available strategy.
-    """
-
-    cfg: SitStandCommandCfg
-
-    def __init__(self, cfg: SitStandCommandCfg, env: ManagerBasedRlEnv):
-        super().__init__(cfg, env)
-        self._alpha = torch.zeros(self.num_envs, device=self.device)
-        # Draws handed over by the reset event. The reset event runs *before*
-        # ``command_manager.reset``, so it cannot write the flag directly (it would be
-        # discarded) and cannot read it either (it would still hold the previous
-        # episode's value). Instead it draws the flag and invites this term to replay
-        # that draw, which keeps the spawn pose and the command consistent without
-        # depending on manager ordering. ``-1`` means "no draw pending".
-        self.pending_sit_flag = torch.full(
-            (self.num_envs,), -1.0, device=self.device
-        )
-
-    @property
-    def command(self) -> torch.Tensor:
-        return self.vel_command_b
-
-    @property
-    def alpha(self) -> torch.Tensor:
-        """Slewed target blend: 0 = stand target, 1 = sit target."""
-        return self._alpha
-
-    def _resample_command(self, env_ids: torch.Tensor) -> None:
-        if len(env_ids) == 0:
-            return
-        pending = self.pending_sit_flag[env_ids]
-        drawn = torch.rand(len(env_ids), device=self.device) < self.cfg.sit_prob
-        # Replay a hand-off where the reset event supplied one; draw otherwise.
-        sit = torch.where(pending >= 0.0, pending, drawn.float())
-        self.pending_sit_flag[env_ids] = -1.0
-        self.vel_command_b[env_ids] = 0.0
-        self.vel_command_b[env_ids, 0] = sit
-
-    def _alpha_from_height(self) -> torch.Tensor:
-        """Target blend that matches the trunk's actual height right now.
-
-        A seated spawn must not be dragged upward by a stand-initialised ramp, so
-        the blend starts where the robot really is.
-        """
-        asset = self.robot
-        origins = self._env.scene.env_origins[:, 2]
-        z = torch.nan_to_num(
-            asset.data.root_link_pos_w[:, 2] - origins, nan=self.cfg.stand_z
-        )
-        span = max(self.cfg.stand_z - self.cfg.sit_z, 1e-6)
-        return torch.clamp((self.cfg.stand_z - z) / span, 0.0, 1.0)
-
-    def compute(self, dt: float, env_ids: torch.Tensor | None = None) -> None:
-        super().compute(dt, env_ids)
-        # The spawn state is only in place on the first compute of an episode:
-        # the command manager resets before the ground-state event teleports the
-        # robot, so reading the height at reset time reads the pre-teleport pose.
-        fresh = self._env.episode_length_buf <= 1
-        if fresh.any():
-            self._alpha = torch.where(fresh, self._alpha_from_height(), self._alpha)
-        step = dt / max(self.cfg.ramp_s, 1e-6)
-        delta = self.vel_command_b[:, 0] - self._alpha
-        self._alpha += torch.clamp(delta, -step, step)
-
-    def _update_command(self, env_ids: torch.Tensor | None = None) -> None:
-        """No heading controller and no standing-env machinery: the flag is it."""
-        del env_ids
-
-    def _update_metrics(self) -> None:
-        """No velocity tracking metrics for a posture flag."""
-
-
-def posture_blend(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-    """Target blend in ``[0, 1]`` (0 = stand, 1 = sit) for the posture rewards."""
-    term = env.command_manager.get_term(command_name)
-    alpha = getattr(term, "alpha", None)
-    if alpha is not None:
-        return alpha
-    return env.command_manager.get_command(command_name)[:, 0]
-
-
-def posture_targets(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_overrides: dict[str, float],
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """``(blend, per-env joint target)`` for the commanded posture.
-
-    The stand target is HOME and the sit target is HOME with the overrides
-    applied; the slewed blend interpolates between them, so mid-ramp the rewarded
-    pose folds in step with the descending height.
-    """
-    blend = posture_blend(env, command_name)
-    asset = _asset(env, asset_cfg)
-    default = asset.data.default_joint_pos
-    assert default is not None
-    ids = _joint_ids(env, asset_cfg)
-    stand = default[:, ids]
-    sit = stand.clone()
-    # sit_overrides is keyed by joint *name* (see contract.LOW_POSTURE_JOINT_POS): the
-    # policy joint order is a task-level decision, so index-based keys would silently
-    # apply a knee angle to a hip if the order ever changed.
-    for name, value in sit_overrides.items():
-        sit[:, _slot_of(asset, ids, name)] = value
-    target = stand + blend.unsqueeze(-1) * (sit - stand)
-    return blend, target
-
-
-def posture_height_target(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_z: float,
-    stand_z: float,
-) -> torch.Tensor:
-    """Trunk height target that moves with the blend."""
-    blend = posture_blend(env, command_name)
-    return stand_z + blend * (sit_z - stand_z)
-
-
-def posture_height_gaussian(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_z: float,
-    stand_z: float,
-    std: float,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """Gaussian around the *commanded* trunk height."""
-    target = posture_height_target(env, command_name, sit_z, stand_z)
-    error = _trunk_height(env, asset_cfg) - target
-    return torch.exp(-torch.square(error) / std**2)
-
-
-def posture_height_l1(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_z: float,
-    stand_z: float,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """``-|z - z*|`` against the commanded height: POSITIVE weight in the config.
-
-    With a small weight the static error of ignoring the command is cheap enough
-    to live with, and "stay seated" becomes a local optimum that never rises. The
-    per-step cost has to be larger than the whole posture reward stack.
-    """
-    target = posture_height_target(env, command_name, sit_z, stand_z)
-    return -torch.abs(_trunk_height(env, asset_cfg) - target)
-
-
-def posture_pose_match(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_overrides: dict[str, float],
-    std: float,
-    joint_indices: tuple[int, ...] | None = None,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """Per-joint Gaussian on the error against the commanded joint target."""
-    _, target = posture_targets(env, command_name, sit_overrides, asset_cfg)
-    asset = _asset(env, asset_cfg)
-    ids = _joint_ids(env, asset_cfg)
-    error = asset.data.joint_pos[:, ids] - target
-    if joint_indices is not None:
-        index = torch.as_tensor(joint_indices, device=env.device, dtype=torch.long)
-        error = error.index_select(-1, index)
-    return torch.exp(-torch.square(error) / std**2).mean(dim=-1)
-
-
-def posture_pose_l1(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_overrides: dict[str, float],
-    joint_indices: tuple[int, ...] | None = None,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """``-mean|q - q*|``: POSITIVE weight in the config."""
-    _, target = posture_targets(env, command_name, sit_overrides, asset_cfg)
-    asset = _asset(env, asset_cfg)
-    ids = _joint_ids(env, asset_cfg)
-    error = asset.data.joint_pos[:, ids] - target
-    if joint_indices is not None:
-        index = torch.as_tensor(joint_indices, device=env.device, dtype=torch.long)
-        error = error.index_select(-1, index)
-    return -error.abs().mean(dim=-1)
-
-
-def posture_stillness(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_z: float,
-    stand_z: float,
-    band_full: float,
-    band_zero: float,
-    vel_std: float,
-    tilt_full_deg: float,
-    tilt_zero_deg: float,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """Reward resting *quietly, upright, at the commanded height, after the ramp*.
-
-    Four gates, each closing a specific exploit:
-
-    - height band: otherwise a robot lying inside the seated height band scores,
-    - tilt gate: the same, for a robot on its back,
-    - speed term: "still" has to mean still,
-    - ramp completion: during the transition this pays nothing, so it cannot
-      compete with the transition it is supposed to reward the end of.
-    """
-    blend = posture_blend(env, command_name)
-    target = posture_height_target(env, command_name, sit_z, stand_z)
-    z_error = (_trunk_height(env, asset_cfg) - target).abs()
-    z_gate = 1.0 - _smoothstep(z_error, band_full, band_zero)
-
-    asset = _asset(env, asset_cfg)
-    speed = torch.norm(asset.data.root_link_lin_vel_w, dim=-1)
-    still = torch.exp(-torch.square(speed / vel_std))
-
-    cos_full = torch.cos(torch.deg2rad(
-        torch.tensor(tilt_full_deg, device=env.device, dtype=torch.float)
-    ))
-    cos_zero = torch.cos(torch.deg2rad(
-        torch.tensor(tilt_zero_deg, device=env.device, dtype=torch.float)
-    ))
-    tilt_gate = _smoothstep(_tilt_cos(env, asset_cfg), float(cos_zero), float(cos_full))
-
-    flag = env.command_manager.get_command(command_name)[:, 0]
-    ramp_done = ((flag - blend).abs() < 0.02).float()
-    return still * z_gate * tilt_gate * ramp_done
-
-
-def posture_composite(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    sit_overrides: dict[str, float],
-    sit_z: float,
-    stand_z: float,
-    height_std: float,
-    upright_std: float,
-    pose_std: float,
-    joint_indices: tuple[int, ...] | None = None,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """Multiplicative goal score: every factor must hold for the product to pay.
-
-    A product rather than a sum is what removes the partial-credit exploits: a
-    sum lets a robot collect the height and pose terms while braced on its head at
-    55 degrees, because each term is satisfied on its own.
-    """
-    target = posture_height_target(env, command_name, sit_z, stand_z)
-    height = torch.exp(
-        -torch.square(_trunk_height(env, asset_cfg) - target) / height_std**2
-    )
-    tilt_sq = 2.0 * (1.0 - _tilt_cos(env, asset_cfg))
-    upright = torch.exp(-tilt_sq / upright_std**2)
-    _, pose_target = posture_targets(env, command_name, sit_overrides, asset_cfg)
-    asset = _asset(env, asset_cfg)
-    ids = _joint_ids(env, asset_cfg)
-    error = asset.data.joint_pos[:, ids] - pose_target
-    if joint_indices is not None:
-        index = torch.as_tensor(joint_indices, device=env.device, dtype=torch.long)
-        error = error.index_select(-1, index)
-    pose = torch.exp(-torch.square(error).mean(dim=-1) / pose_std**2)
-    return height * upright * pose
-
-
-def posture_rise_bootstrap(
-    env: ManagerBasedRlEnv,
-    command_name: str,
-    max_height: float,
-    max_vz: float,
-    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
-) -> torch.Tensor:
-    """Pay for the *motion* of rising, not just for the destination.
-
-    A goal-only reward has zero gradient at zero motion, so "stay seated and eat
-    the L1" is a local optimum the policy can sit in forever. This term makes any
-    rise attempt immediately positive. ``max_vz`` caps the payout so an explosive
-    launch cannot out-earn a gentle one, and the term is zero under a sit command
-    so it never fights the descent.
-    """
-    asset = _asset(env, asset_cfg)
-    vz = asset.data.root_link_lin_vel_w[:, 2]
-    below = _trunk_height(env, asset_cfg) < max_height
-    sit = env.command_manager.get_command(command_name)[:, 0]
-    return torch.clamp(vz, min=0.0, max=max_vz) * below.float() * (1.0 - sit)
 
 
 def head_pose_tracking(

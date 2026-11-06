@@ -11,8 +11,8 @@ import pytest
 import torch
 
 from ht_microduck.tasks import FLAT_VELSTAND_TASK_ID, _assert_task_contract
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config import flat_velstand_env_cfg as velstand
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck import flat_velstand_env_cfg as velstand
 from ht_microduck.tasks.mdp.events import reset_to_ground_state
 from ht_microduck.tasks.mdp.observations import FOOT_SITE_NAMES
 from ht_microduck.tasks.mdp.official_posture_rewards import (

@@ -12,8 +12,8 @@ import torch
 from mjlab.utils.lab_api.math import quat_apply_inverse
 
 from ht_microduck.robot.ht_microduck_constants import HOME_FRAME
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.official_robot import (
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.official_robot import (
     FACE_DOWN_SUPPORT_Z,
     FACE_UP_SUPPORT_Z,
 )

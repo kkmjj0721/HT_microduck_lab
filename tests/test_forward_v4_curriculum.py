@@ -15,11 +15,11 @@ from mjlab.tasks.registry import load_env_cfg, load_rl_cfg, load_runner_cls
 
 from ht_microduck.robot.ht_microduck_constants import JOINT_NAMES
 from ht_microduck.tasks import _assert_task_contract
-from ht_microduck.tasks import contract as C
-from ht_microduck.tasks.config.flat_sitstand_forward_env_cfg import (
+from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.ht_microduck.flat_sitstand_forward_env_cfg import (
     make_sitstand_forward_env_cfg,
 )
-from ht_microduck.tasks.config.flat_sitstand_forward_v4_env_cfg import (
+from ht_microduck.tasks.config.ht_microduck.flat_sitstand_forward_v4_env_cfg import (
     make_sitstand_forward_v4_env_cfg,
 )
 from ht_microduck.tasks.mdp import forward_events

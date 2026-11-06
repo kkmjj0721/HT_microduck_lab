@@ -16,7 +16,7 @@ from mjlab.managers.event_manager import requires_model_fields
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 
 from ht_microduck.actuator.HD_1910_C001.friction_dr_bam import FrictionDRBamActuator
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 
 if TYPE_CHECKING:
     from mjlab.envs import ManagerBasedRlEnv

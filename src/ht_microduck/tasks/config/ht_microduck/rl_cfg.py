@@ -8,8 +8,12 @@ from copy import deepcopy
 
 from mjlab.rl import RslRlModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
 
-from ht_microduck.tasks.config.flat_velocity_env_cfg import NUM_STEPS_PER_ENV
-from ht_microduck.tasks.config.flat_velstand_env_cfg import assert_curriculum_units
+from ht_microduck.tasks.config.ht_microduck.flat_velocity_env_cfg import (
+    NUM_STEPS_PER_ENV,
+)
+from ht_microduck.tasks.config.ht_microduck.flat_velstand_env_cfg import (
+    assert_curriculum_units,
+)
 
 # Network widths and PPO hyperparameters match the official microduck_rl task.
 FlatVelocityRlCfg = RslRlOnPolicyRunnerCfg(

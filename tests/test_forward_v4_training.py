@@ -19,7 +19,7 @@ from pathlib import Path
 
 import torch
 
-from ht_microduck.tasks import contract as C
+from ht_microduck.tasks import ht_microduck_contract as C
 
 ROOT = Path(__file__).resolve().parents[1]
 TASK = "HtDuck-Flat-SitStand-Forward-V4"

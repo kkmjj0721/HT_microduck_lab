@@ -145,7 +145,7 @@ def _check_cyberduck(model: mujoco.MjModel) -> None:
         mode = "velocity [rad/s]" if name in robot.VELOCITY_JOINT_NAMES else "position [rad]"
         print(f"  {name:<24} {robot.JOINT_TO_MOTOR_MODEL[name]:<20} {mode}")
     print("Controller gains, effort limits and delays are simulation defaults.")
-    print("Source zero pose is for inspection; standing stability is unverified.")
+    print("Default pose uses bent legs and a retracted neck; hardware stability is unverified.")
 
 
 def _check_ht_microduck(
