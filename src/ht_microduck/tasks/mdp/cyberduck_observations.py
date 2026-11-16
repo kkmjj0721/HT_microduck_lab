@@ -1,7 +1,7 @@
 # Copyright (c) 2026-2027 zh
 """
 内容：
-    将 CyberDuck V2 四个滚轮的接地状态转换为 critic 特权观测。
+    提供 CyberDuck V2 裁剪后的历史动作及四个滚轮接地状态观测。
 """
 
 from __future__ import annotations
@@ -12,6 +12,17 @@ import torch
 
 if TYPE_CHECKING:
     from mjlab.envs import ManagerBasedRlEnv
+
+
+def clipped_last_action(env: ManagerBasedRlEnv) -> torch.Tensor:
+    """按腿位置、踝速度顺序返回上一控制帧的裁剪动作，形状为环境数×10。"""
+    return torch.cat(
+        (
+            env.action_manager.get_term("joint_pos").raw_action,
+            env.action_manager.get_term("joint_vel").raw_action,
+        ),
+        dim=-1,
+    ).to(dtype=torch.float32)
 
 
 def wheel_contact(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:

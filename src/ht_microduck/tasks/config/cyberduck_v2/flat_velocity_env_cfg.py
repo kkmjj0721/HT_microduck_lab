@@ -11,7 +11,6 @@ import math
 from copy import deepcopy
 
 from mjlab.envs import ManagerBasedRlEnvCfg, mdp
-from mjlab.envs.mdp.actions import JointVelocityActionCfg
 from mjlab.managers import (
     EventTermCfg,
     MetricsTermCfg,
@@ -33,22 +32,30 @@ from ht_microduck.robot.cyberduck_v2_constants import (
     get_cyberduck_v2_robot_cfg,
 )
 from ht_microduck.tasks import cyberduck_v2_contract as C
-from ht_microduck.tasks.mdp.actions import BoundedJointPositionActionCfg
+from ht_microduck.tasks.mdp.cyberduck_actions import (
+    CyberDuckJointPositionActionCfg,
+    CyberDuckJointVelocityActionCfg,
+)
 from ht_microduck.tasks.mdp.cyberduck_commands import RollingVelocityCommandCfg
 from ht_microduck.tasks.mdp.cyberduck_events import reset_control_targets
 from ht_microduck.tasks.mdp.cyberduck_metrics import WheelDriveMetric
-from ht_microduck.tasks.mdp.cyberduck_observations import wheel_contact
+from ht_microduck.tasks.mdp.cyberduck_observations import (
+    clipped_last_action,
+    wheel_contact,
+)
 from ht_microduck.tasks.mdp.cyberduck_rewards import (
     JointTargetRateL2,
+    VariablePosture,
     height_band_l2,
     nonwheel_ground_contact,
-    position_deviation_l2,
     tilt_band_l2,
     track_planar_velocity_exp,
     track_yaw_velocity_exp,
+    zero_command_joint_velocity_l2,
     zero_command_motion,
 )
 from ht_microduck.tasks.mdp.cyberduck_terminations import contact_failure
+from ht_microduck.tasks.mdp.rewards import stand_still
 
 
 def make_flat_velocity_env_cfg(
@@ -75,7 +82,7 @@ def make_flat_velocity_env_cfg(
         "joint_vel": ObservationTermCfg(
             func=mdp.joint_vel_rel, params={"asset_cfg": velocity_state_joints}
         ),
-        "actions": ObservationTermCfg(func=mdp.last_action),
+        "actions": ObservationTermCfg(func=clipped_last_action),
         "command": ObservationTermCfg(
             func=mdp.generated_commands, params={"command_name": "twist"}
         ),
@@ -159,18 +166,20 @@ def make_flat_velocity_env_cfg(
             "critic": ObservationGroupCfg(terms=critic_terms, enable_corruption=False),
         },
         actions={
-            "joint_pos": BoundedJointPositionActionCfg(
+            "joint_pos": CyberDuckJointPositionActionCfg(
                 entity_name="robot",
                 actuator_names=C.POLICY_POSITION_JOINT_NAMES,
                 preserve_order=True,
-                scale=C.POSITION_ACTION_SCALE,
+                scale=dict(C.POSITION_ACTION_SCALE),
+                raw_action_limit=C.POSITION_ACTION_LIMIT,
                 use_default_offset=True,
             ),
-            "joint_vel": JointVelocityActionCfg(
+            "joint_vel": CyberDuckJointVelocityActionCfg(
                 entity_name="robot",
                 actuator_names=C.POLICY_VELOCITY_JOINT_NAMES,
                 preserve_order=True,
                 scale=C.VELOCITY_ACTION_SCALE,
+                raw_action_limit=C.VELOCITY_ACTION_LIMIT,
                 use_default_offset=True,
                 clip={".*": (-C.VELOCITY_TARGET_LIMIT, C.VELOCITY_TARGET_LIMIT)},
             ),
@@ -213,6 +222,21 @@ def make_flat_velocity_env_cfg(
                 func=zero_command_motion, weight=-0.5,
                 params={"command_name": "twist", "linear_scale": 0.1, "angular_scale": 0.3},
             ),
+            # 静止或低速指令下约束腿部 HOME，连续踝角和滚轮累计角不参与姿态惩罚。
+            "stand_still": RewardTermCfg(
+                func=stand_still, weight=-0.5,
+                params={
+                    "command_name": "twist", "command_threshold": 0.1,
+                    "asset_cfg": deepcopy(position_joints),
+                },
+            ),
+            "stop_wheel_velocity": RewardTermCfg(
+                func=zero_command_joint_velocity_l2, weight=-0.5,
+                params={
+                    "command_name": "twist", "velocity_scale": C.VELOCITY_ACTION_SCALE,
+                    "asset_cfg": SceneEntityCfg("robot", joint_names=C.POLICY_VELOCITY_JOINT_NAMES, preserve_order=True),
+                },
+            ),
             "height": RewardTermCfg(
                 func=height_band_l2, weight=-0.3,
                 params={"target_height": C.SUPPORT_HEIGHT, "tolerance": C.HEIGHT_TOLERANCE, "scale": 0.05},
@@ -222,8 +246,29 @@ def make_flat_velocity_env_cfg(
                 params={"tolerance": C.TILT_TOLERANCE, "scale": math.radians(20.0)},
             ),
             "pose": RewardTermCfg(
-                func=position_deviation_l2, weight=-0.2,
-                params={"asset_cfg": deepcopy(position_joints)},
+                func=VariablePosture, weight=1.0,
+                params={
+                    "asset_cfg": deepcopy(position_joints),
+                    "command_name": "twist",
+                    # 采用 Go2 容差；额外髋 yaw 与髋 roll 同组，是轮行任务的适配候选。
+                    "std_standing": {
+                        ".*_hip_(yaw|roll)_joint": 0.05,
+                        ".*_hip_pitch_joint": 0.10,
+                        ".*_calf_joint": 0.15,
+                    },
+                    "std_walking": {
+                        ".*_hip_(yaw|roll)_joint": 0.15,
+                        ".*_hip_pitch_joint": 0.35,
+                        ".*_calf_joint": 0.50,
+                    },
+                    "std_running": {
+                        ".*_hip_(yaw|roll)_joint": 0.15,
+                        ".*_hip_pitch_joint": 0.35,
+                        ".*_calf_joint": 0.50,
+                    },
+                    "walking_threshold": 0.1,
+                    "running_threshold": 1.5,
+                },
             ),
             "nonwheel_ground_contact": RewardTermCfg(
                 func=nonwheel_ground_contact, weight=-1.0,
@@ -232,7 +277,7 @@ def make_flat_velocity_env_cfg(
             "joint_torques": RewardTermCfg(func=mdp.joint_torques_l2, weight=-1.0e-4),
             "position_target_rate": RewardTermCfg(
                 func=JointTargetRateL2, weight=-0.02,
-                params={"asset_cfg": deepcopy(position_joints), "target_type": "position", "scale": C.POSITION_ACTION_SCALE},
+                params={"asset_cfg": deepcopy(position_joints), "target_type": "position", "scale": C.POSITION_TARGET_RATE_SCALES},
             ),
             "velocity_target_rate": RewardTermCfg(
                 func=JointTargetRateL2, weight=-0.02,
@@ -247,7 +292,7 @@ def make_flat_velocity_env_cfg(
         metrics={
             "wheel_slip_speed_m_s": MetricsTermCfg(func=WheelDriveMetric, params={"field": "wheel_slip_speed_m_s"}),
             "wheel_normal_load_n": MetricsTermCfg(func=WheelDriveMetric, params={"field": "wheel_normal_load_n"}),
-            "actuator_saturation_fraction": MetricsTermCfg(func=WheelDriveMetric, params={"field": "actuator_saturation"}),
+            "nt_actuator_saturation_fraction": MetricsTermCfg(func=WheelDriveMetric, params={"field": "nt_actuator_saturation"}),
             "belt_velocity_error_rad_s": MetricsTermCfg(func=WheelDriveMetric, params={"field": "mimic_velocity_abs_error_rad_s"}),
         },
         terminations={

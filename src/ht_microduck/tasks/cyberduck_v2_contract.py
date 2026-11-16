@@ -6,7 +6,7 @@
 位置关节以相对 HOME 的 rad 表示，两踝只接收 rad/s 速度目标；机身速度与命令使用
 机体系，线速度单位 m/s，角速度单位 rad/s。动作无量纲，张量为环境设备上的 float32。
 actor 按项拼接五帧历史，项内从旧到新；critic 仅使用当前帧。重置以重置后首帧回填历史。
-本契约与旧 HT 全位置任务、CyberDuck 首版 49/56/14 检查点及其归一化统计不兼容。
+actions 观测取分组限幅后的执行动作，PPO 保留裁剪前采样。旧版动作语义的检查点不兼容。
 """
 
 from ht_microduck.robot.cyberduck_v2_constants import (
@@ -43,13 +43,22 @@ OBSERVATION_VELOCITY_JOINT_NAMES: tuple[str, ...] = (
     OBSERVATION_POSITION_JOINT_NAMES + VELOCITY_JOINT_NAMES
 )
 
-# 贴地固定 HOME 探针支持本轮保守任务范围；不代表实机标定或策略最优参数。
-POSITION_ACTION_SCALE: float = 0.25
-VELOCITY_ACTION_SCALE: float = 2.0
-VELOCITY_TARGET_LIMIT: float = 4.0
-COMMAND_LINEAR_LIMIT: float = 0.1
-COMMAND_YAW_LIMIT: float = 0.2
-COMMAND_MAX_ACCELERATION: tuple[float, float, float] = (0.05, 0.05, 0.2)
+# 固定 HOME 贴地探针支持任务速度范围；不代表已训练策略或实机标定。
+ACTION_CONTRACT_VERSION: str = "rolling_h5_a10_bounded_v2_vx05"
+POSITION_ACTION_LIMIT: float = 1.0
+VELOCITY_ACTION_LIMIT: float = 2.0
+POSITION_ACTION_SCALE: dict[str, float] = {
+    name: 0.10 if name.endswith(("_hip_yaw_joint", "_hip_roll_joint")) else 0.20
+    for name in POLICY_POSITION_JOINT_NAMES
+}
+POSITION_TARGET_RATE_SCALES: tuple[float, ...] = tuple(
+    POSITION_ACTION_SCALE[name] for name in POLICY_POSITION_JOINT_NAMES
+)
+VELOCITY_ACTION_SCALE: float = 10.0
+VELOCITY_TARGET_LIMIT: float = 20.0
+COMMAND_LINEAR_LIMIT: float = 0.5
+COMMAND_YAW_LIMIT: float = 0.5
+COMMAND_MAX_ACCELERATION: tuple[float, float, float] = (0.2, 0.05, 0.2)
 
 # ---------- 观测与接触 ----------
 ACTOR_OBSERVATION_TERMS: tuple[str, ...] = (
@@ -117,6 +126,12 @@ def validate_contract() -> None:
         raise ValueError("CyberDuck V2 frame/actor/critic/action dimensions must remain 45/225/52/10")
     if CONTROL_HZ != 50.0:
         raise ValueError("CyberDuck V2 policy frequency must remain 50 Hz")
+    if tuple(POSITION_ACTION_SCALE) != POLICY_POSITION_JOINT_NAMES:
+        raise ValueError("CyberDuck V2 position scales must follow the position action order")
+    if POSITION_TARGET_RATE_SCALES != tuple(POSITION_ACTION_SCALE.values()):
+        raise ValueError("CyberDuck V2 target-rate scales must match each position action")
+    if VELOCITY_ACTION_LIMIT * VELOCITY_ACTION_SCALE != VELOCITY_TARGET_LIMIT:
+        raise ValueError("CyberDuck V2 raw velocity bounds must preserve the physical target limit")
 
 
 validate_contract()

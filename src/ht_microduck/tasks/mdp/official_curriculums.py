@@ -254,3 +254,61 @@ def pose_command_range_curriculum(
     max_abs = max((max(abs(lo), abs(hi)) for lo, hi in current), default=0.0)
     return torch.tensor(max_abs)
 
+
+def reward_param_curriculum(
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor,
+    reward_name: str,
+    param_stages: list[dict],
+) -> torch.Tensor:
+    """按训练步数更新奖励项的 params，使用 live RewardManager 配置。
+
+    官方 backflip 用同一函数把 ``launch_gate_floor`` 从 0.30 收紧到 0.05；
+    ``param_stages`` 为 ``{"step": int, "params": dict}``，浅合并到当前项。
+    """
+    del env_ids
+    term_cfg = env.reward_manager.get_term_cfg(reward_name)
+    current = param_stages[0]["params"]
+    for stage in param_stages:
+        if env.common_step_counter >= stage["step"]:
+            current = stage["params"]
+    term_cfg.params.update(current)
+    value = next(iter(current.values()))
+    return torch.tensor(float(value) if isinstance(value, (int, float)) else 0.0)
+
+
+def reward_weight_ramp(
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor,
+    reward_name: str,
+    start_weight: float,
+    end_weight: float,
+    ramp_steps: int,
+    delay_steps: int = 0,
+    hold_weight: float | None = None,
+) -> torch.Tensor:
+    """从首次调用时的训练步开始线性加重奖励，适配续训。
+
+    固定 ``step`` 阈值在续训时会被一次性跳过（本机从 model_9999 恢复时
+    ``common_step_counter`` 已达 240000），这里把起点记在 env 上，使课程
+    无论从零还是从检查点续训都从当前步开始，不会直接跳到末段。
+
+    ``delay_steps`` 让权重先保持 ``hold_weight``（默认 ``start_weight``），
+    经过该延迟后才开始 ramp。用于“必须等主任务先学会才能加”的辅助奖励：
+    2026-11-15 实测当前配置单次从零训练时，``settle``/``stand_action_rate``/
+    ``stand_angvel`` 三项从第一步就生效，把 ``roulade_progress`` 压住，
+    6000 迭代后角度仍停在 127–148°（stage4 同期已达 334–383°）。
+    """
+    del env_ids
+    key = f"_curriculum_ramp_start_{reward_name}"
+    if not hasattr(env, key):
+        setattr(env, key, int(env.common_step_counter))
+    start = getattr(env, key)
+    elapsed = int(env.common_step_counter) - start
+    if elapsed < delay_steps:
+        weight = start_weight if hold_weight is None else hold_weight
+    else:
+        blend = min(max((elapsed - delay_steps) / max(ramp_steps, 1), 0.0), 1.0)
+        weight = start_weight + (end_weight - start_weight) * blend
+    env.reward_manager.get_term_cfg(reward_name).weight = weight
+    return torch.tensor([weight])

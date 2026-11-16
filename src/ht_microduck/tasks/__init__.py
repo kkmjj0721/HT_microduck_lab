@@ -9,15 +9,27 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from mjlab.envs.mdp.actions import JointVelocityActionCfg
 from mjlab.tasks.registry import register_mjlab_task
 
 from ht_microduck.tasks import cyberduck_v2_contract as CV2
+from ht_microduck.tasks import cyberduck_v2_roulade_contract as CR
+from ht_microduck.tasks import ht_microduck_backflip_contract as BF
 from ht_microduck.tasks import ht_microduck_contract as C
+from ht_microduck.tasks.config.cyberduck_v2.flat_roulade_env_cfg import (
+    make_recovery_env_cfg,
+    make_roulade_env_cfg,
+)
 from ht_microduck.tasks.config.cyberduck_v2.flat_velocity_env_cfg import (
     make_flat_velocity_env_cfg as make_cyberduck_v2_velocity_env_cfg,
 )
-from ht_microduck.tasks.config.cyberduck_v2.rl_cfg import CyberDuckV2VelocityRlCfg
+from ht_microduck.tasks.config.cyberduck_v2.rl_cfg import (
+    CyberDuckV2RouladeRecoveryRlCfg,
+    CyberDuckV2RouladeRlCfg,
+    CyberDuckV2VelocityRlCfg,
+)
+from ht_microduck.tasks.config.ht_microduck.flat_backflip_env_cfg import (
+    make_backflip_env_cfg,
+)
 from ht_microduck.tasks.config.ht_microduck.flat_sitstand_env_cfg import (
     make_sitstand_env_cfg,
 )
@@ -41,6 +53,7 @@ from ht_microduck.tasks.config.ht_microduck.flat_velstand_env_cfg import (
 )
 from ht_microduck.tasks.config.ht_microduck.rl_cfg import (
     FlatVelocityRlCfg,
+    HtBackflipRlCfg,
     SitStandForwardRlCfg,
     SitStandForwardV4RlCfg,
     SitStandRlCfg,
@@ -48,14 +61,24 @@ from ht_microduck.tasks.config.ht_microduck.rl_cfg import (
     VelocityHeadRlCfg,
     VelStandRlCfg,
 )
-from ht_microduck.tasks.mdp.actions import BoundedJointPositionActionCfg
+from ht_microduck.tasks.mdp.cyberduck_actions import (
+    CyberDuckJointPositionActionCfg,
+    CyberDuckJointVelocityActionCfg,
+)
+from ht_microduck.tasks.mdp.cyberduck_observations import clipped_last_action
+from ht_microduck.tasks.rl.cyberduck_roulade_runner import (
+    CyberDuckRouladeOnPolicyRunner,
+)
+from ht_microduck.tasks.rl.cyberduck_runner import CyberDuckOnPolicyRunner
 from ht_microduck.tasks.rl.forward_runner import ForwardCurriculumOnPolicyRunner
+from ht_microduck.tasks.rl.ht_backflip_runner import HtBackflipOnPolicyRunner
 from ht_microduck.tasks.rl.runner import (
     OfficialTaskOnPolicyRunner,
     VelocityHeadOnPolicyRunner,
 )
 
 FLAT_VELOCITY_TASK_ID = "HtDuck-Flat-Velocity"
+FLAT_BACKFLIP_TASK_ID = BF.TASK_ID
 FLAT_VELOCITY_HEAD_TASK_ID = "HtDuck-Flat-Velocity-Head"
 FLAT_STANDUP_TASK_ID = "HtDuck-Flat-StandUp"
 FLAT_SITSTAND_TASK_ID = "HtDuck-Flat-SitStand"
@@ -65,6 +88,8 @@ FLAT_VELSTAND_TASK_ID = "HtDuck-Flat-VelStand"
 FLAT_SITSTAND_UNBOUNDED_TASK_ID = "HtDuck-Flat-SitStand-Unbounded"
 FLAT_VELSTAND_UNBOUNDED_TASK_ID = "HtDuck-Flat-VelStand-Unbounded"
 CYBERDUCK_V2_VELOCITY_TASK_ID = "CyberDuckV2-Flat-Velocity"
+CYBERDUCK_V2_ROULADE_TASK_ID = CR.TASK_ID
+CYBERDUCK_V2_ROULADE_RECOVERY_TASK_ID = CR.RECOVERY_TASK_ID
 
 register_mjlab_task(
     task_id=FLAT_VELOCITY_TASK_ID,
@@ -80,6 +105,14 @@ register_mjlab_task(
     play_env_cfg=make_flat_velocity_head_env_cfg(play=True),
     rl_cfg=VelocityHeadRlCfg,
     runner_cls=VelocityHeadOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id=FLAT_BACKFLIP_TASK_ID,
+    env_cfg=make_backflip_env_cfg(),
+    play_env_cfg=make_backflip_env_cfg(play=True),
+    rl_cfg=HtBackflipRlCfg,
+    runner_cls=HtBackflipOnPolicyRunner,
 )
 
 register_mjlab_task(
@@ -145,6 +178,23 @@ register_mjlab_task(
     env_cfg=make_cyberduck_v2_velocity_env_cfg(),
     play_env_cfg=make_cyberduck_v2_velocity_env_cfg(play=True),
     rl_cfg=CyberDuckV2VelocityRlCfg,
+    runner_cls=CyberDuckOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id=CYBERDUCK_V2_ROULADE_TASK_ID,
+    env_cfg=make_roulade_env_cfg(),
+    play_env_cfg=make_roulade_env_cfg(play=True),
+    rl_cfg=CyberDuckV2RouladeRlCfg,
+    runner_cls=CyberDuckRouladeOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id=CYBERDUCK_V2_ROULADE_RECOVERY_TASK_ID,
+    env_cfg=make_recovery_env_cfg(),
+    play_env_cfg=make_recovery_env_cfg(play=True),
+    rl_cfg=CyberDuckV2RouladeRecoveryRlCfg,
+    runner_cls=CyberDuckRouladeOnPolicyRunner,
 )
 
 
@@ -154,12 +204,14 @@ def _assert_cyberduck_v2_contract(env_cfg) -> None:
     if tuple(env_cfg.actions) != ("joint_pos", "joint_vel"):
         raise ValueError(f"{prefix}: expected position and velocity action terms")
     position, velocity = env_cfg.actions.values()
-    if not isinstance(position, BoundedJointPositionActionCfg) or not isinstance(velocity, JointVelocityActionCfg):
+    if not isinstance(position, CyberDuckJointPositionActionCfg) or not isinstance(velocity, CyberDuckJointVelocityActionCfg):
         raise ValueError(f"{prefix}: action control modes do not match the contract")
     if tuple(position.actuator_names) != CV2.POLICY_POSITION_JOINT_NAMES or tuple(velocity.actuator_names) != CV2.POLICY_VELOCITY_JOINT_NAMES:
         raise ValueError(f"{prefix}: action joint order does not match the contract")
     if position.scale != CV2.POSITION_ACTION_SCALE or velocity.scale != CV2.VELOCITY_ACTION_SCALE:
         raise ValueError(f"{prefix}: position or velocity action units changed")
+    if position.raw_action_limit != CV2.POSITION_ACTION_LIMIT or velocity.raw_action_limit != CV2.VELOCITY_ACTION_LIMIT:
+        raise ValueError(f"{prefix}: grouped raw action limits changed")
     if not position.use_default_offset or not position.bound_targets:
         raise ValueError(f"{prefix}: position targets must use HOME and hard limits")
     if not velocity.use_default_offset or velocity.clip != {".*": (-CV2.VELOCITY_TARGET_LIMIT, CV2.VELOCITY_TARGET_LIMIT)}:
@@ -170,6 +222,8 @@ def _assert_cyberduck_v2_contract(env_cfg) -> None:
         terms = env_cfg.observations[group].terms
         if tuple(terms) != expected:
             raise ValueError(f"{prefix}: {group} observation order does not match the contract")
+        if terms["actions"].func is not clipped_last_action:
+            raise ValueError(f"{prefix}: actions observation must use grouped clipped actions")
         for term, names in (("joint_pos", CV2.OBSERVATION_POSITION_JOINT_NAMES), ("joint_vel", CV2.OBSERVATION_VELOCITY_JOINT_NAMES)):
             if tuple(terms[term].params["asset_cfg"].joint_names) != names:
                 raise ValueError(f"{prefix}: {group} {term} joint order changed")
@@ -189,6 +243,21 @@ def _assert_task_contract(task_id: str, env_cfg) -> None:
     task narrowing a command slot (which silently shortens the actor vector) or dropping
     an observation term.
     """
+    if task_id in (CYBERDUCK_V2_ROULADE_TASK_ID, CYBERDUCK_V2_ROULADE_RECOVERY_TASK_ID):
+        if tuple(env_cfg.actions) != ("joint_pos", "joint_vel"):
+            raise ValueError("Roulade requires position then velocity action terms")
+        for name, joints, scale in (("joint_pos", CR.POSITION_JOINTS, CR.POSITION_SCALE),
+                                    ("joint_vel", CR.VELOCITY_JOINTS, CR.VELOCITY_SCALE)):
+            term = env_cfg.actions[name]
+            if tuple(term.actuator_names) != joints or term.scale != scale:
+                raise ValueError("Roulade action order or units changed")
+        recovery = task_id == CYBERDUCK_V2_ROULADE_RECOVERY_TASK_ID
+        actor_terms = CR.RECOVERY_ACTOR_TERMS if recovery else CR.ACTOR_TERMS
+        critic_terms = CR.RECOVERY_CRITIC_TERMS if recovery else CR.CRITIC_TERMS
+        for group, names in (("actor", actor_terms), ("critic", critic_terms)):
+            if tuple(env_cfg.observations[group].terms) != names:
+                raise ValueError("Roulade observation order changed")
+        return
     if task_id == CYBERDUCK_V2_VELOCITY_TASK_ID:
         _assert_cyberduck_v2_contract(env_cfg)
         return
@@ -237,6 +306,7 @@ def _assert_task_contract(task_id: str, env_cfg) -> None:
 
 for _task_id, _env_cfg in (
     (FLAT_VELOCITY_TASK_ID, make_flat_velocity_env_cfg(num_envs=1)),
+    (FLAT_BACKFLIP_TASK_ID, make_backflip_env_cfg(num_envs=1)),
     (FLAT_VELOCITY_HEAD_TASK_ID, make_flat_velocity_head_env_cfg(num_envs=1)),
     (FLAT_STANDUP_TASK_ID, make_standup_env_cfg(num_envs=1)),
     (FLAT_SITSTAND_TASK_ID, make_sitstand_env_cfg(num_envs=1)),
@@ -246,17 +316,22 @@ for _task_id, _env_cfg in (
     (FLAT_SITSTAND_UNBOUNDED_TASK_ID, make_sitstand_env_cfg(num_envs=1, bound_targets=False)),
     (FLAT_VELSTAND_UNBOUNDED_TASK_ID, make_velstand_env_cfg(num_envs=1, bound_targets=False)),
     (CYBERDUCK_V2_VELOCITY_TASK_ID, make_cyberduck_v2_velocity_env_cfg(num_envs=1)),
+    (CYBERDUCK_V2_ROULADE_TASK_ID, make_roulade_env_cfg(num_envs=1)),
+    (CYBERDUCK_V2_ROULADE_RECOVERY_TASK_ID, make_recovery_env_cfg(num_envs=1)),
 ):
     _assert_task_contract(_task_id, _env_cfg)
 del _task_id, _env_cfg
 
 __all__ = [
+    "CYBERDUCK_V2_ROULADE_RECOVERY_TASK_ID",
+    "CYBERDUCK_V2_ROULADE_TASK_ID",
     "CYBERDUCK_V2_VELOCITY_TASK_ID",
     "FLAT_SITSTAND_TASK_ID",
     "FLAT_SITSTAND_FORWARD_TASK_ID",
     "FLAT_SITSTAND_FORWARD_V4_TASK_ID",
     "FLAT_STANDUP_TASK_ID",
     "FLAT_VELOCITY_HEAD_TASK_ID",
+    "FLAT_BACKFLIP_TASK_ID",
     "FLAT_VELOCITY_TASK_ID",
     "FLAT_VELSTAND_TASK_ID",
     "FLAT_SITSTAND_UNBOUNDED_TASK_ID",

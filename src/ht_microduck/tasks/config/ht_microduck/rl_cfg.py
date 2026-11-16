@@ -183,3 +183,45 @@ VelocityHeadRlCfg.run_name = "velocity_head"
 
 # Keep curriculum environment steps aligned with the rollout length.
 assert_curriculum_units(VelStandRlCfg)
+
+# 后空翻沿用官方 512-256-128 Gaussian 与 PPO 数值，使用独立日志名；
+# 首版不启用 mirror loss：HT 的左右关节符号与官方不同，先验证映射再开。
+from ht_microduck.tasks import ht_microduck_backflip_contract as _B  # noqa: E402
+
+HtBackflipRlCfg = RslRlOnPolicyRunnerCfg(
+    actor=RslRlModelCfg(
+        hidden_dims=(512, 256, 128),
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg={
+            "class_name": "GaussianDistribution",
+            "init_std": 1.0,
+            "std_type": "scalar",
+        },
+    ),
+    critic=RslRlModelCfg(
+        hidden_dims=(512, 256, 128),
+        activation="elu",
+        obs_normalization=True,
+    ),
+    algorithm=RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.01,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    ),
+    logger="tensorboard",
+    experiment_name=_B.EXPERIMENT_NAME,
+    run_name=_B.RUN_NAME,
+    save_interval=250,
+    num_steps_per_env=NUM_STEPS_PER_ENV,
+    max_iterations=_B.TRAIN_MAX_ITERATIONS,
+)

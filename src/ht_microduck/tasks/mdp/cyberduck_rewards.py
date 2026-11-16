@@ -1,7 +1,7 @@
 # Copyright (c) 2026-2027 zh
 """
 内容：
-    提供 CyberDuck 主动轮行的跟踪、停车、支撑容许带与分组目标变化代价。
+    提供 CyberDuck 主动轮行的跟踪、分速度姿态奖励、停车与目标变化代价。
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import torch
 from mjlab.managers.manager_base import ManagerTermBase
 from mjlab.managers.scene_entity_config import SceneEntityCfg
+from mjlab.utils.lab_api.string import resolve_matching_names_values
 
 if TYPE_CHECKING:
     from mjlab.envs import ManagerBasedRlEnv
@@ -26,6 +27,51 @@ def position_deviation_l2(
         - robot.data.default_joint_pos[:, asset_cfg.joint_ids]
     )
     return torch.square(deviation).mean(dim=-1)
+
+
+class VariablePosture(ManagerTermBase):
+    """沿用 Go2 的分速度高斯姿态奖励，关节分组和容差由任务配置声明。"""
+
+    def __init__(self, cfg, env: ManagerBasedRlEnv):
+        super().__init__(env)
+        asset_cfg = cfg.params["asset_cfg"]
+        asset = env.scene[asset_cfg.name]
+        self.default_joint_pos = asset.data.default_joint_pos
+        # 使用管理器已经解析的选列顺序，避免显式 joint_ids 被再次按模型顺序排列。
+        joint_ids = asset_cfg.joint_ids
+        if isinstance(joint_ids, slice):
+            joint_names = asset.joint_names[joint_ids]
+        else:
+            joint_names = [asset.joint_names[index] for index in joint_ids]
+        for name in ("std_standing", "std_walking", "std_running"):
+            _, _, values = resolve_matching_names_values(cfg.params[name], joint_names)
+            setattr(self, name, torch.tensor(values, device=self.device, dtype=torch.float32))
+
+    def __call__(
+        self,
+        env: ManagerBasedRlEnv,
+        std_standing: dict[str, float],
+        std_walking: dict[str, float],
+        std_running: dict[str, float],
+        asset_cfg: SceneEntityCfg,
+        command_name: str,
+        walking_threshold: float = 0.5,
+        running_threshold: float = 1.5,
+    ) -> torch.Tensor:
+        del std_standing, std_walking, std_running
+        command = env.command_manager.get_command(command_name)
+        total_speed = torch.norm(command[:, :2], dim=1) + command[:, 2].abs()
+        standing = (total_speed < walking_threshold).float()
+        walking = ((total_speed >= walking_threshold) & (total_speed < running_threshold)).float()
+        running = (total_speed >= running_threshold).float()
+        std = (
+            self.std_standing * standing.unsqueeze(1)
+            + self.std_walking * walking.unsqueeze(1)
+            + self.std_running * running.unsqueeze(1)
+        )
+        current = env.scene[asset_cfg.name].data.joint_pos[:, asset_cfg.joint_ids]
+        desired = self.default_joint_pos[:, asset_cfg.joint_ids]
+        return torch.exp(-torch.mean(torch.square(current - desired) / torch.square(std), dim=1))
 
 
 def nonwheel_ground_contact(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
@@ -56,6 +102,15 @@ def zero_command_motion(
     return stopped * (1.0 - torch.exp(-motion))
 
 
+def zero_command_joint_velocity_l2(
+    env: ManagerBasedRlEnv, command_name: str, asset_cfg: SceneEntityCfg, velocity_scale: float
+) -> torch.Tensor:
+    """零有效指令时，惩罚所选轮部关节实际转速相对零速的归一化均方误差。"""
+    stopped = (env.command_manager.get_command(command_name).abs() <= 1.0e-6).all(dim=-1)
+    velocity = env.scene[asset_cfg.name].data.joint_vel[:, asset_cfg.joint_ids]
+    return stopped * torch.square(velocity / velocity_scale).mean(dim=-1)
+
+
 def height_band_l2(
     env: ManagerBasedRlEnv, target_height: float, tolerance: float, scale: float
 ) -> torch.Tensor:
@@ -81,23 +136,31 @@ class JointTargetRateL2(ManagerTermBase):
         self.robot = env.scene[asset.name]
         self.joint_ids = asset.joint_ids
         self.target_type = cfg.params["target_type"]
-        if self.target_type not in ("position", "velocity") or cfg.params["scale"] <= 0:
-            raise ValueError("Target rate requires position/velocity targets and a positive scale")
+        if self.target_type not in ("position", "velocity"):
+            raise ValueError("Target rate requires position or velocity targets")
         self._default = (
             self.robot.data.default_joint_pos if self.target_type == "position" else self.robot.data.default_joint_vel
         )[:, self.joint_ids]
+        scale = cfg.params["scale"]
+        if not isinstance(scale, (int, float, tuple)):
+            raise ValueError("Target rate scale must be a scalar or a per-joint tuple")
+        self._scale = torch.as_tensor(scale, dtype=self._default.dtype, device=self.device)
+        if self._scale.ndim > 1 or (self._scale.ndim == 1 and self._scale.numel() != self._default.shape[-1]):
+            raise ValueError("Target rate scale must be a scalar or match the selected joint count")
+        if not torch.isfinite(self._scale).all() or not (self._scale > 0).all():
+            raise ValueError("Target rate scales must be positive and finite")
         self.previous_targets = self._default.clone()
 
     def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
         self.previous_targets[env_ids] = self._default[env_ids]
 
     def __call__(
-        self, env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg, target_type: str, scale: float
+        self, env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg, target_type: str, scale: float | tuple[float, ...]
     ) -> torch.Tensor:
-        del env, asset_cfg, target_type
+        del env, asset_cfg, target_type, scale
         targets = (
             self.robot.data.joint_pos_target if self.target_type == "position" else self.robot.data.joint_vel_target
         )[:, self.joint_ids]
-        cost = torch.square((targets - self.previous_targets) / scale).mean(dim=-1)
+        cost = torch.square((targets - self.previous_targets) / self._scale).mean(dim=-1)
         self.previous_targets.copy_(targets)
         return cost

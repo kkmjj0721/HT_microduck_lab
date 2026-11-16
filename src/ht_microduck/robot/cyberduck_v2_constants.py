@@ -171,6 +171,47 @@ HOME_FRAME = replace(
     joint_vel=dict.fromkeys(JOINT_NAMES, 0.0),
 )
 
+# 前滚翻任务的参考站立姿态（rad），与 HOME 分开维护。
+#
+# 2026-11-13 用零动作保持（16 环境、4 秒、seed7）复测后更正了此前的一个错误结论：
+# 之前的旧版本曾把“HOME 稳不住”当成改用策略站姿的理由，实测并非如此——
+# 以 HOME 为默认姿态零动作站立：根高 0.2414 m、倾角 1.97°、双侧轮支撑 1.0、
+# 自接触 0.0、无跌倒，与策略站姿完全同级。策略之所以漂到 hip_yaw ±0.43 的宽支撑姿态，
+# 是因为姿态奖励太弱（pose 项只覆盖腿关节、取均值、std 0.4），不是 HOME 不可站。
+#
+# 因此这里回到**左右对称、yaw/roll 为 0** 的参考站姿：与 HOME 同族，但显式把
+# head_roll 归零（HOME 的 0.011 是旧增益下的补偿量，不是姿态需求）。
+# 零动作复测：根高 0.2414、倾角 1.97°、支撑 1.0、自接触 0.0、无跌倒。
+STAND_JOINT_POS: dict[str, float] = {
+    "r_hip_pitch_joint": 0.490,
+    "l_hip_pitch_joint": 0.490,
+    "r_calf_joint": -0.444,
+    "l_calf_joint": -0.444,
+    "neck_pitch_joint": -0.360,
+    "head_pitch_joint": 0.405,
+    "head_roll_joint": 0.0,
+}
+_stand_frame = dict(SOURCE_JOINT_POS, **STAND_JOINT_POS)
+STAND_FRAME = replace(
+    SOURCE_FRAME,
+    pos=(0.0, 0.0, 0.2414),
+    joint_pos=_stand_frame,
+    joint_vel=dict.fromkeys(JOINT_NAMES, 0.0),
+)
+_STAND_JOINT_LIMITS = {
+    # 参考姿态必须落在硬关节行程内，否则动作映射的 HOME 逆映射不成立。
+    "r_hip_pitch_joint": (-1.571, 1.571),
+    "r_calf_joint": (-1.571, 1.571),
+    "neck_pitch_joint": (-1.571, 2.920),
+    "head_pitch_joint": (-1.571, 1.570),
+    "head_roll_joint": (-0.436, 0.436),
+}
+for _name, (_lo, _hi) in _STAND_JOINT_LIMITS.items():
+    _value = STAND_JOINT_POS[_name]
+    if not _lo < _value < _hi:
+        raise ValueError(f"STAND_JOINT_POS[{_name!r}]={_value} is outside ({_lo}, {_hi})")
+del _name, _lo, _hi, _value, _stand_frame
+
 # 13 个关节接位置目标（rad），两踝接速度目标（rad/s），滚轮没有独立输入。
 # 独立动态运行须先按执行器约定展开逐环境模型字段，再写目标或 reset。
 # 参数沿用项目现有 HTDW-3532 的仿真配置，不代表 CyberDuck 实机标定。

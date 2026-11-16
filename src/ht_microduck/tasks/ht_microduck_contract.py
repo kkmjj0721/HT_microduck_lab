@@ -252,7 +252,26 @@ OFFICIAL_CRITIC_TERMS: tuple[str, ...] = (
     "head_command",
     "body_command",
 )
+BACKFLIP_CRITIC_TERMS: tuple[str, ...] = (
+    "base_lin_vel",
+    "base_ang_vel",
+    "projected_gravity",
+    "joint_pos",
+    "joint_vel",
+    "actions",
+    "command",
+    "foot_air_time",
+    "foot_contact",
+    "foot_contact_forces",
+    "head_command",
+    "body_command",
+    "plate_position",
+    "plate_velocity",
+    "plate_phase",
+    "hold_remaining",
+)
 TASK_CRITIC_OBSERVATION_DIMS: dict[str, int] = {
+    "HtDuck-Flat-Backflip": 82,
     "HtDuck-Flat-Velocity": 76,
     "HtDuck-Flat-Velocity-Head": 76,
     "HtDuck-Flat-StandUp": 74,
@@ -267,6 +286,8 @@ TASK_CRITIC_OBSERVATION_DIMS: dict[str, int] = {
 
 def critic_observation_terms(task_id: str) -> tuple[str, ...]:
     """返回各任务有序的 critic 项，包括任务对应的足端特权输入。"""
+    if task_id == "HtDuck-Flat-Backflip":
+        return BACKFLIP_CRITIC_TERMS
     if task_id in ("HtDuck-Flat-VelStand", "HtDuck-Flat-VelStand-Unbounded"):
         return ACTOR_OBSERVATION_TERMS + CRITIC_EXTRA_TERMS
     if task_id in ("HtDuck-Flat-StandUp", "HtDuck-Flat-SitStand", "HtDuck-Flat-SitStand-Unbounded", "HtDuck-Flat-SitStand-Forward", "HtDuck-Flat-SitStand-Forward-V4"):

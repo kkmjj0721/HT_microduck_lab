@@ -1,0 +1,15 @@
+<mujoco model="ht_backflip_launcher">
+  <!-- 空翻发射板：0.30 x 0.30 x 0.02 m、50 kg 的自由体。
+       位姿和速度由 backflip_plate step/reset 事件逐控制步写入，因此板本身
+       不需要真实驱动；大质量保证机器人蹬板时板的反向位移可忽略。
+       板中心 z=0.01 使板底正好落在地面上，避免两次事件之间的自由落体。 -->
+  <compiler angle="radian" autolimits="true"/>
+  <worldbody>
+    <body name="plate" pos="0 0 0.01">
+      <freejoint name="plate_free"/>
+      <inertial pos="0 0 0" mass="50.0" diaginertia="0.5 0.5 1.0"/>
+      <geom type="box" name="plate_geom" size="0.15 0.15 0.01"
+            rgba="0.35 0.35 0.4 1" friction="1.5 0.02 0.001"/>
+    </body>
+  </worldbody>
+</mujoco>

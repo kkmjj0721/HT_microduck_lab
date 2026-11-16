@@ -7,14 +7,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import torch
 from mjlab.managers.command_manager import CommandTerm
 from mjlab.tasks.velocity.mdp import UniformVelocityCommand, UniformVelocityCommandCfg
 
 if TYPE_CHECKING:
+    import viser
     from mjlab.envs import ManagerBasedRlEnv
 
 
@@ -46,6 +48,41 @@ class RollingVelocityCommand(UniformVelocityCommand):
         self._acceleration = torch.tensor(cfg.max_acceleration, device=self.device)
         self._command_dt: float | torch.Tensor = 0.0
         self._update_env_ids: torch.Tensor | None = None
+
+    def create_gui(
+        self,
+        name: str,
+        server: viser.ViserServer,
+        get_env_idx: Callable[[], int],
+        on_change: Callable[[], None] | None = None,
+        request_action: Callable[[str, Any], None] | None = None,
+    ) -> None:
+        """使用任务速度范围创建控件，固定横向轴保持零值并禁用。"""
+        from viser import Icon
+
+        ranges = self.cfg.ranges
+        sliders = []
+        with server.gui.add_folder(name.capitalize()):
+            enabled = server.gui.add_checkbox("Enable", initial_value=False)
+            for label, limits in (
+                ("lin_vel_x", ranges.lin_vel_x),
+                ("lin_vel_y", ranges.lin_vel_y),
+                ("ang_vel_z", ranges.ang_vel_z),
+            ):
+                sliders.append(server.gui.add_slider(
+                    label, min=limits[0], max=limits[1], step=0.01, initial_value=0.0,
+                    disabled=limits[0] == limits[1],
+                ))
+            zero = server.gui.add_button("Zero", icon=Icon.SQUARE_X)
+
+            @zero.on_click
+            def _(_) -> None:
+                for slider in sliders:
+                    slider.value = 0.0
+
+        self._joystick_enabled = enabled
+        self._joystick_sliders = sliders
+        self._joystick_get_env_idx = get_env_idx
 
     def _resample_command(self, env_ids: torch.Tensor) -> None:
         effective = self.vel_command_b[env_ids].clone()
