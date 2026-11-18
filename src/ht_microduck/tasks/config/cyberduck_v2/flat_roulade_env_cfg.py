@@ -201,6 +201,13 @@ def make_roulade_env_cfg(*, num_envs: int = 512, seed: int | None = None,
                                                params={"max_height": C.SUPPORT_HEIGHT + 0.01,
                                                        "gate_lo": math.radians(180), "gate_hi": math.radians(260)}),
         "roulade_sagittal": RewardTermCfg(func=rewards.roulade_sagittal_penalty, weight=-0.1),
+        # 横滚姿态角本身：原有约束只看角速度和横轴水平度，策略可以慢慢歪过去。
+        # 全电机版实测峰值横滚 152°、横向位移 0.26 m，观感变成侧翻。
+        # 初始权重为 0，由 Recovery 课程在策略学会翻滚之后才逐步加重
+        # （2026-11-16 实测：从第一步就用 -2.0 会把策略压回 132–148° 平台）。
+        "roulade_lateral_tilt": RewardTermCfg(
+            func=rewards.roulade_lateral_tilt, weight=0.0,
+        ),
         "roulade_lateral_vel": RewardTermCfg(func=rewards.roulade_lateral_velocity_penalty, weight=-0.5),
         "roulade_flatness": RewardTermCfg(func=rewards.roulade_flatness_penalty, weight=-0.5),
         "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-0.1),
@@ -473,6 +480,21 @@ def make_recovery_env_cfg(*, num_envs: int = 512, seed: int | None = None,
     # 头颈姿态课程：从“轻微约束”线性加到“回到 HOME”。直接用固定权重会在
     # 站立能力尚未建立时把它压垮（neck -3.0 的同预算实验 0/32、根高 0.145 m）；
     # 相对步数起点的 ramp 保证从零和从检查点续训都不会被一次性跳过。
+    # 横滚姿态约束：必须等策略学会翻滚之后再加重。
+    # 2026-11-16 实测：从第一步就用 -2.0，策略学会"不动最安全"，卡在 132–148°。
+    # 延迟 600 迭代（≈14400 步）后再从 0 收紧到 -4.0。
+    cfg.curriculum["lateral_tilt_weight"] = CurriculumTermCfg(
+        func=reward_weight_ramp,
+        params={
+            "reward_name": "roulade_lateral_tilt",
+            "start_weight": 0.0,
+            # 实测 -4.0 只罚 -1.58，相对站立类奖励（合计 100+）可忽略，
+            # 侧倾反而从 152° 增到 163°。加大到 -20 形成实质约束。
+            "end_weight": -20.0,
+            "ramp_steps": 400 * 24,
+            "delay_steps": 600 * 24,
+        },
+    )
     cfg.curriculum["neck_pose_weight"] = CurriculumTermCfg(
         func=reward_weight_ramp,
         params={
@@ -571,6 +593,7 @@ def make_recovery_env_cfg(*, num_envs: int = 512, seed: int | None = None,
     if play:
         # 没有对应课程项的项直接写末段值；有课程的由 _apply_final_curriculum 统一快进。
         cfg.rewards["recovery_potential"].weight = 6.0
+        cfg.rewards["roulade_lateral_tilt"].weight = -20.0
         cfg.rewards["neck_pose_l2"].weight = -1.6
         cfg.rewards["head_upright"].weight = 2.5
         _apply_final_curriculum(cfg)

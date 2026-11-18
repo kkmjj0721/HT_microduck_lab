@@ -129,16 +129,16 @@ def _check_cyberduck(model: mujoco.MjModel) -> None:
     if names != robot.ACTUATOR_NAMES or targets != robot.ACTUATED_JOINT_NAMES:
         raise ValueError("CyberDuck V2 mixed-drive actuator order is invalid.")
     groups = tuple(tuple(act.target_names) for act in entity.actuators)
+    # 2026-11-16 全电机驱动：原舵机三名并入位置组，只剩位置组与踝速度组。
     if groups != (
         robot.BRUSHLESS_POSITION_JOINT_NAMES,
         robot.VELOCITY_JOINT_NAMES,
-        robot.SERVO_JOINT_NAMES,
     ):
-        raise ValueError("CyberDuck V2 position/velocity/servo grouping is invalid.")
+        raise ValueError("CyberDuck V2 position/velocity grouping is invalid.")
     if set(targets).intersection(robot.MIMIC_JOINT_NAMES):
         raise ValueError("CyberDuck V2 follower rollers must not have actuators.")
     print("Mixed-drive entity: nq=26, nv=25, nu=15, neq=4.")
-    print("Drive groups: 12 HTDW-3532 NT-PD motors + 3 HD1910 BAM servos.")
+    print("Drive groups: 15 HTDW-3532 NT-PD motors (all-electric, no servos).")
     print("Controls: 13 position targets [rad], 2 ankle velocity targets [rad/s].")
     print("Follower rollers have no direct control inputs.")
     for name in targets:

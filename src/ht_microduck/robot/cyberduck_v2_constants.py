@@ -14,7 +14,7 @@ from pathlib import Path
 import mujoco
 from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
 
-from ht_microduck.actuator import FrictionDRBamActuatorCfg, HTDW3532ActuatorCfg
+from ht_microduck.actuator import HTDW3532ActuatorCfg
 
 # ---------- 资源与关节 ----------
 MJCF_PATH: Path = Path(__file__).resolve().parent / "cyberduck_v2" / "CyberDuck_V2.xml"
@@ -59,7 +59,9 @@ INDEPENDENT_JOINT_NAMES: tuple[str, ...] = tuple(
 SOURCE_ACTUATED_JOINT_NAMES: tuple[str, ...] = ("r_ankle_joint", "l_ankle_joint")
 SOURCE_ACTUATOR_NAMES: tuple[str, ...] = ("r_ankle_motor", "l_ankle_motor")
 
-# 12 个无刷中，两踝控制速度、其余控制位置；头部三个舵机控制位置。
+# 全电机驱动：原 head_yaw/head_roll/mouth 三个舵机已改为无刷电机（2026-11-16）。
+# 两踝仍控制速度、其余控制位置。分组名保留 SERVO_* 以免破坏既有导入，
+# 但它们现在指向无刷电机，不再使用 HD1910 执行器。
 BRUSHLESS_JOINT_NAMES: tuple[str, ...] = (
     "r_hip_yaw_joint",
     "r_hip_roll_joint",
@@ -73,27 +75,32 @@ BRUSHLESS_JOINT_NAMES: tuple[str, ...] = (
     "l_ankle_joint",
     "neck_pitch_joint",
     "head_pitch_joint",
+    "head_yaw_joint",
+    "head_roll_joint",
+    "mouth_joint",
 )
 VELOCITY_JOINT_NAMES: tuple[str, ...] = ("r_ankle_joint", "l_ankle_joint")
 BRUSHLESS_POSITION_JOINT_NAMES: tuple[str, ...] = tuple(
     name for name in BRUSHLESS_JOINT_NAMES if name not in VELOCITY_JOINT_NAMES
 )
+# 原舵机控制的 3 个关节。名字保留以兼容既有导入与测试，
+# 但它们现在由 BRUSHLESS_ACTUATOR_CFG 驱动（见 SERVO_ACTUATOR_CFG 定义处）。
 SERVO_JOINT_NAMES: tuple[str, ...] = (
     "head_yaw_joint",
     "head_roll_joint",
     "mouth_joint",
 )
-POSITION_JOINT_NAMES: tuple[str, ...] = (
-    BRUSHLESS_POSITION_JOINT_NAMES + SERVO_JOINT_NAMES
-)
+# 原舵机三名已并入 BRUSHLESS_POSITION_JOINT_NAMES，这里去重后保持 13 路位置控制。
+POSITION_JOINT_NAMES: tuple[str, ...] = BRUSHLESS_POSITION_JOINT_NAMES
 
-# 编译后的执行器仍按原 12＋3 顺序；配置分组不要求 ctrl 连续分块。
-ACTUATED_JOINT_NAMES: tuple[str, ...] = BRUSHLESS_JOINT_NAMES + SERVO_JOINT_NAMES
+# 编译后的执行器顺序；全电机驱动后 15 个关节都由无刷配置驱动，不再追加舵机。
+ACTUATED_JOINT_NAMES: tuple[str, ...] = BRUSHLESS_JOINT_NAMES
 ACTUATOR_NAMES: tuple[str, ...] = ACTUATED_JOINT_NAMES
-JOINT_TO_MOTOR_MODEL: dict[str, str] = {
-    **dict.fromkeys(BRUSHLESS_JOINT_NAMES, "HTDW-3532-02-DNE"),
-    **dict.fromkeys(SERVO_JOINT_NAMES, "FEETECH HD1910"),
-}
+# 2026-11-16 全电机驱动：原 HD1910 舵机三名（head_yaw/head_roll/mouth）
+# 统一改为 HTDW-3532-02-DNE，不再有 FEETECH HD1910。
+JOINT_TO_MOTOR_MODEL: dict[str, str] = dict.fromkeys(
+    BRUSHLESS_JOINT_NAMES, "HTDW-3532-02-DNE"
+)
 
 # ---------- 碰撞与源模型装配 ----------
 _COLLISION_NAMES_BY_BODY: dict[str, tuple[str, ...]] = {
@@ -236,18 +243,18 @@ ANKLE_VELOCITY_ACTUATOR_CFG = replace(
     stiffness=0.0,
 )
 
-# 舵机采用项目既有 7.4 V HD1910 BAM M6；kp_fw 为固件模型增益。
-# 供电、限幅和 0–3 个物理步延迟均为沿用的仿真假设，关闭摩擦随机化。
-SERVO_ACTUATOR_CFG = FrictionDRBamActuatorCfg(
+# 2026-11-16 全电机驱动：原 head_yaw/head_roll/mouth 三个 HD1910 舵机改用
+# 与腿部相同的 HTDW-3532 无刷位置电机（方案 A：只换执行器模型，沿用无刷的
+# 控制参数 stiffness=10.0 / damping=0.4 / effort_limit=2.0 / armature）。
+#
+# 影响：头部偏航与横滚的力矩上限从舵机的 1.471 N·m 提升到 2.0 N·m，
+# 且控制律由固件增益 kp_fw=32 改为 SI 关节 PD。此前训练的检查点因执行器
+# 动力学改变而不再等价，需重新训练。
+#
+# 名字保留为 SERVO_ACTUATOR_CFG 以兼容既有导入；它不再产生 HD1910 执行器。
+SERVO_ACTUATOR_CFG = replace(
+    BRUSHLESS_ACTUATOR_CFG,
     target_names_expr=SERVO_JOINT_NAMES,
-    vin=7.4,
-    kp_fw=32.0,
-    effort_limit=1.471,
-    friction_scale_range=None,
-    delay_min_lag=0,
-    delay_max_lag=3,
-    delay_hold_prob=0.4,
-    delay_update_period=10,
 )
 
 CYBERDUCK_V2_ROBOT_CFG = EntityCfg(
@@ -257,7 +264,6 @@ CYBERDUCK_V2_ROBOT_CFG = EntityCfg(
         actuators=(
             BRUSHLESS_ACTUATOR_CFG,
             ANKLE_VELOCITY_ACTUATOR_CFG,
-            SERVO_ACTUATOR_CFG,
         ),
         soft_joint_pos_limit_factor=1.0,
     ),

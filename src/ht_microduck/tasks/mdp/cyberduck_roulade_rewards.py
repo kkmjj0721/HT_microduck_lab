@@ -897,3 +897,23 @@ def roulade_roll_continuity(
     # 「360° 后 30° 内渐变到 0.35」，结果 325° 得 2.71 分、360° 只剩 1.05，
     # 单测直接抓到这个反例。现在 330° 之后**保持满值**，只随 progress 单调增。
     return progress
+
+def roulade_lateral_tilt(
+    env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG
+) -> torch.Tensor:
+    """惩罚“横滚角”本身（姿态，而非角速度），保留前翻俯仰自由度。
+
+    2026-11-16 诊断：全电机版策略起翻前 11 个控制步内横滚从 3° 涨到 104°，
+    峰值横滚 152°、偏航 120°、横向位移 0.26 m——观感是侧翻而非前滚翻。
+
+    原有 `roulade_sagittal`(-0.1) 与 `roulade_flatness`(-0.5) 只看角速度和
+    横轴水平度，策略可以缓慢歪过去而不持续付代价。
+
+    度量用机身 up 轴的 **y 分量**（`2*(y*z - w*x)`）：纯绕 y 轴俯仰前翻时它恒为 0，
+    纯横滚 90° 时为 -1，正是要压的量。注意不能用 x 分量——那一项对俯仰敏感，
+    会把合法的 90° 前翻误判成侧倾。
+    """
+    quat = env.scene[asset_cfg.name].data.root_link_quat_w
+    w, x, y, z = quat.unbind(-1)
+    up_y = 2.0 * (y * z - w * x)
+    return torch.nan_to_num(up_y.square(), nan=0.0)
