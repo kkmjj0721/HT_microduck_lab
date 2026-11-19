@@ -180,6 +180,12 @@ HOME_FRAME = replace(
 
 # 前滚翻任务的参考站立姿态（rad），与 HOME 分开维护。
 #
+# 2026-11-18 换用新模型（整机 3.703212→3.42329628 kg、头部五连杆降 25%、全部网格更新）
+# 后复测：同一组 STAND_JOINT_POS 仍满足根高 0.241639 m、倾角 2.87°、双侧轮支撑 1.000、
+# 自接触 0.000，因此姿态数值本身不需要改，只需更新 SUPPORT_HEIGHT（契约内）。
+# 参考站姿的硬行程检查在下方按新限位复核：neck_pitch 上限 2.920→1.877、
+# head_roll ±0.436→±0.208，当前参考值 -0.360 / 0.0 仍在内。
+#
 # 2026-11-13 用零动作保持（16 环境、4 秒、seed7）复测后更正了此前的一个错误结论：
 # 之前的旧版本曾把“HOME 稳不住”当成改用策略站姿的理由，实测并非如此——
 # 以 HOME 为默认姿态零动作站立：根高 0.2414 m、倾角 1.97°、双侧轮支撑 1.0、
@@ -188,7 +194,7 @@ HOME_FRAME = replace(
 #
 # 因此这里回到**左右对称、yaw/roll 为 0** 的参考站姿：与 HOME 同族，但显式把
 # head_roll 归零（HOME 的 0.011 是旧增益下的补偿量，不是姿态需求）。
-# 零动作复测：根高 0.2414、倾角 1.97°、支撑 1.0、自接触 0.0、无跌倒。
+# 零动作复测（旧模型）：根高 0.2414、倾角 1.97°、支撑 1.0、自接触 0.0、无跌倒。
 STAND_JOINT_POS: dict[str, float] = {
     "r_hip_pitch_joint": 0.490,
     "l_hip_pitch_joint": 0.490,
@@ -199,19 +205,22 @@ STAND_JOINT_POS: dict[str, float] = {
     "head_roll_joint": 0.0,
 }
 _stand_frame = dict(SOURCE_JOINT_POS, **STAND_JOINT_POS)
+# 根高取新模型受载站姿实测值（32 环境 × 4 秒末秒均值 0.241639 m），不是源 XML 的 0.252。
 STAND_FRAME = replace(
     SOURCE_FRAME,
-    pos=(0.0, 0.0, 0.2414),
+    pos=(0.0, 0.0, 0.2416),
     joint_pos=_stand_frame,
     joint_vel=dict.fromkeys(JOINT_NAMES, 0.0),
 )
 _STAND_JOINT_LIMITS = {
     # 参考姿态必须落在硬关节行程内，否则动作映射的 HOME 逆映射不成立。
+    # 2026-11-18 换用新模型后按新 XML 更新：neck_pitch 上限 1.877、head_roll ±0.208、
+    # head_pitch 上限 1.571（旧版 2.920 / ±0.436 / 1.570）。
     "r_hip_pitch_joint": (-1.571, 1.571),
     "r_calf_joint": (-1.571, 1.571),
-    "neck_pitch_joint": (-1.571, 2.920),
-    "head_pitch_joint": (-1.571, 1.570),
-    "head_roll_joint": (-0.436, 0.436),
+    "neck_pitch_joint": (-1.571, 1.877),
+    "head_pitch_joint": (-1.571, 1.571),
+    "head_roll_joint": (-0.208, 0.208),
 }
 for _name, (_lo, _hi) in _STAND_JOINT_LIMITS.items():
     _value = STAND_JOINT_POS[_name]
