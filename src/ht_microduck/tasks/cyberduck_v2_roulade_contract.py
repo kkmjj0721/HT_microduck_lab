@@ -55,10 +55,14 @@ RECOVERY_CRITIC_DIM = 55
 STAND_POSE: dict[str, float] = {
     name: float(STAND_JOINT_POS.get(name, 0.0)) for name in POSITION_JOINTS
 }
-SUPPORT_HEIGHT = 0.2414
+# 2026-11-18 换用新模型后重测：32 环境、4 秒零动作、纯站立初态，
+# 末秒根高均值 0.241639 m、std 0.000929、倾角 2.87°、双侧轮支撑 1.000、自接触 0.000，
+# 整机 COM 高 0.197381 m。旧值 0.2414 恰好接近，但它是旧几何的受载结果，不能当作同一模型沿用。
+SUPPORT_HEIGHT = 0.2416
 HEAD_BODY_NAME = "head_roll_link"
 # HOME 静态正运动学：世界竖直表达在头部局部坐标中，非实机标定。
-HEAD_TOP_AXIS = (-0.044984525254463184, 0.010990881244789183, 0.9989272210812423)
+# 2026-11-18 换用新模型后重算；新几何下 head_roll_link 本体系与旧版不同，数值必须更新。
+HEAD_TOP_AXIS = (-0.0449848140376603, 0.010988642771902007, 0.9989272327031775)
 WHEEL_GEOMS = (
     "r_roller_back_collision", "r_roller_front_collision",
     "l_roller_back_collision", "l_roller_front_collision",

@@ -356,11 +356,14 @@ def make_recovery_env_cfg(*, num_envs: int = 512, seed: int | None = None,
             func=rewards.roulade_head_upright, weight=1.0,
             params={"gate_lo": math.radians(200), "gate_hi": math.radians(300)},
         ),
-        # 低头不是审美问题，是“用 31% 质量换重心”：HOME 整机 COM 0.223 m，
+        # 低头不是审美问题，是“用头部质量换重心”：旧模型 HOME 整机 COM 0.223 m，
         # 折头后 0.186 m，而根体高度不变，之前所有高度项都看不见这个变化。
+        # 2026-11-18 换用新模型：头部五连杆质量 1.154606→0.8665786 kg（31.2%→25.3%），
+        # 受载 HOME 整机 COM 实测 0.197381 m（32 环境 × 4 秒末秒均值）。
+        # 低头换重心的收益相应变小，但项本身仍防止“根高不变、COM 下沉”被漏计。
         com_height=RewardTermCfg(
             func=rewards.roulade_com_height, weight=2.0,
-            params={"target_height": 0.223, "height_std": 0.03,
+            params={"target_height": 0.1974, "height_std": 0.03,
                     "gate_lo": math.radians(200), "gate_hi": math.radians(300)},
         ),
         # 六项验收判据里只有角速度不满足：站立段 |ω| 中位数 0.98 rad/s，

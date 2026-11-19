@@ -105,7 +105,11 @@ BODY_CONTACT_SENSOR_NAME: str = "body_ground_contact"
 SELF_CONTACT_SENSOR_NAME: str = "self_contact"
 
 # 本地受载 HOME 仿真参考，非源初始根高或实机测量值。
-SUPPORT_HEIGHT: float = 0.238
+#
+# 2026-11-18 换用新模型（整机 3.703212→3.42329628 kg、头部质量降 25%）后重测：
+# 32 环境、4 秒零动作，末秒根高均值 0.241147 m、std 0.000095、倾角 2.70°，
+# 整机 COM 高 0.196236 m。旧值 0.238 是旧几何的受载结果，不再适用。
+SUPPORT_HEIGHT: float = 0.2411
 HEIGHT_TOLERANCE: float = 0.015
 TILT_TOLERANCE: float = 0.13962634015954636  # 8 度，单位 rad。
 

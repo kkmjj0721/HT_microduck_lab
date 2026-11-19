@@ -19,7 +19,8 @@ HT 的训练、恢复与回放链路已有运行证据；前坐等技能尚未�
 | `HtDuck-Flat-VelStand-Unbounded` | 组合任务未约束关节目标的历史语义对照 |
 | `CyberDuckV2-Flat-Velocity` | 主动轮行速度跟踪，8 路腿位置＋2 路踝速度，头颈保持 HOME |
 | `CyberDuckV2-Flat-Roulade` | 无参考动作的前滚翻，12 路位置＋2 路踝速度，滚过头顶后恢复滚轮支撑；技能待验收 |
-| `CyberDuckV2-Flat-Roulade-Recovery` | 本机前滚翻适配实验：关节行程动作映射、轮支撑恢复奖励与完整阶段初态；技能待验收 |
+| `CyberDuckV2-Flat-Roulade-Recovery` | 本机前滚翻适配实验：关节行程动作映射、轮支撑恢复奖励与完整阶段初态；2026-11-18 新模型上 4 个种子各 32/32 通过 |
+| `CyberDuckV2-Flat-StandUp` | 摔倒起立：俯卧/仰卧/侧卧/坐姿/站姿五类初态起立到参考站姿；2026-11-18 新模型上 4 个种子各 32/32 通过（倒地初态逐个成功） |
 | `HtDuck-Flat-Backflip` | 官方 hand-off 后空翻：站立保持、50 kg 发射板、空中进度与落地；actor/critic/动作 61/82/14；发射包线临时沿用官方 d26322f，未在 HT 标定；训练链路已通，技能待验收 |
 
 ## 快速开始
@@ -71,6 +72,19 @@ uv run --no-sync python -B tests/test_cyberduck_roulade_training.py train \
   --task CyberDuckV2-Flat-Roulade-Recovery --device cuda:0 \
   --num-envs 1024 --seed 0 --min-training-seconds 1800 --learning-rate 3e-4 \
   --checkpoint <检查点路径> --output logs/roulade/<新目录>
+
+# CyberDuck V2：摔倒起立，从零训练（同一配方先跑约 1800 秒，再续训到收敛）
+uv run --no-sync python -B tests/test_cyberduck_standup.py train \
+  --device cuda:0 --num-envs 1024 --seed 0 \
+  --max-iterations 2500 --min-training-seconds 1800 --output logs/standup/<新目录>
+
+# CyberDuck V2：摔倒起立续训与评估
+uv run --no-sync python -B tests/test_cyberduck_standup.py train \
+  --device cuda:0 --num-envs 1024 --seed 0 --min-training-seconds 1800 \
+  --checkpoint <检查点路径> --output logs/standup/<新目录>
+uv run --no-sync python -B tests/test_cyberduck_standup.py eval \
+  --device cuda:0 --num-envs 32 --seed 0 \
+  --checkpoint <检查点路径> --output logs/standup/<评估目录>
 
 # HT Microduck：官方 hand-off 后空翻，从零训练（实验；发射包线待本机标定）
 uv run --no-sync duck-train HtDuck-Flat-Backflip \
@@ -129,9 +143,10 @@ CyberDuck 当前接口为 actor `225`（每项按旧到新展开 5 帧、单帧 
 `HtDuck-Flat-Backflip` 复用 HT 的 61 维 actor 和 14 维位置动作；actor 不观察发射板，critic 为 82 维，追加板位置/速度、phase 和剩余 hold 时间。板为 0.30 m 见方、50 kg、逐控制步重写位姿；`z0=0.01 m`、`vz 2.20–2.60 m/s`、`w0 5–6 rad/s`、`t_launch 0.22–0.26 s` 是从官方 0.74 kg 机器人临时继承的基线，**尚未在 HT 上做包线/落地标定**，不能当作已验证配置。训练日志在 `logs/rsl_rl/ht_backflip/`。
 
 前滚翻的落地判据使用独立参考站姿 `STAND_JOINT_POS`（`robot/cyberduck_v2_constants.py`），
-不是通用 `HOME_JOINT_POS`：HOME 的 yaw/roll 全为 0，策略实测无法稳定收敛到它；
-参考站姿经零动作 4 秒验证（根高 0.2414 m、倾角 1.98°、双侧轮支撑 1.0、无自接触），
-`SUPPORT_HEIGHT=0.2414`、站姿 RMS 阈值 0.12。轮行等其它任务仍使用 HOME。
+不是通用 `HOME_JOINT_POS`：HOME 的 yaw/roll 全为 0，策略实测无法稳定收敛到它。
+2026-11-18 换用新版模型后重测参考站姿零动作 4 秒（32 环境）：根高 0.241639 m、倾角 2.87°、
+双侧轮支撑 1.000、无自接触、整机 COM 高 0.197381 m，故 `SUPPORT_HEIGHT=0.2416`、
+`com_height` 目标 0.1974；站姿 RMS 阈值 0.12。轮行等其它任务仍使用 HOME（受载根高 0.2411 m）。
 
 `CyberDuckV2-Flat-Roulade-Recovery` 使用 `48/55/14` 接口，在上述观测末尾追加翻转进度与头部记录，
 区分翻前起翻和翻后保持。位置动作改为按各关节行程的
@@ -141,6 +156,14 @@ HOME 偏置 tanh 映射，零动作对应 HOME 编码器目标；恢复正奖励
 日志在 `logs/rsl_rl/cyberduck_v2_roulade_recovery/`，
 可从零训练，也可恢复相同 v3 动作与观测契约的检查点，并用同一 Recovery 任务回放。
 原 Roulade 和 Recovery v2 权重不兼容；原任务及其日志保留用于对照。
+
+`CyberDuckV2-Flat-StandUp` 是摔倒起立任务，动作同为 `14`（12 路位置用关节行程 tanh 映射 +
+2 路踝速度），actor/critic 为 `46/53` 单帧，6 秒一回合。初态按俯卧、仰卧、侧卧、坐姿、站姿
+五类采样并按碰撞几何最低点贴地 1 mm，课程从站姿为主逐步过渡到倒地为主；奖励里所有站立类项
+都乘站立高度核，另用严格单调的 `rise_continuity` 填满倒地段，避免"躺平不动"成为局部最优。
+成功判据为根高 `0.2416±0.025 m`、倾角 ≤20°、四轮双侧支撑、12 关节相对参考站姿 RMS ≤0.12、
+线速度 ≤0.2 m/s、角速度 ≤0.8 rad/s 连续保持 0.5 s，任意倒地初态起立都算合法。
+它与前滚翻任务的检查点不兼容，回放须选择同一任务。
 
 ## 项目结构
 
