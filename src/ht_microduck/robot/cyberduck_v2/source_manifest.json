@@ -1,4 +1,9 @@
 {
+  "source_archive": {
+    "path": "/home/sunteng/Downloads/CyberDuck_V2.zip",
+    "sha256": "e9532ec8e394c74783906a476cf6f2a40d1cd8f13ed430f3b84252090bbf6b9c",
+    "note": "用户 2026-11-18 提供的 SolidWorks SW2URDF 重新导出包；本清单只记录可直接核对的文件。"
+  },
   "source_directory": "/home/sunteng/Downloads/CyberDuck_V2/CyberDuck_V2",
   "package": {
     "name": "CyberDuck_V2",
@@ -8,112 +13,113 @@
   },
   "source_files": {
     "package.xml": "01f88c380643c5ae03d3af09900cced2b302d9638ce044400be28a757a2794fa",
-    "xml/CyberDuck_V2.xml": "a22d4445983155b5c97f441927cf4c636c2b0bffb550bfa0637bcf7c48a8d0dd",
-    "urdf/CyberDuck_V2.urdf": "7e3b2c602c90c82a60183677273bdd408b6337bade162156c872d5d24677be4a"
+    "xml/CyberDuck_V2.xml": "17a07b3a3e54c6c17909237a5c49ca81481c30782d47f9c2addf1448a93ab53a",
+    "urdf/CyberDuck_V2.urdf": "a99ae7de5446754e03bee33ad05fc573b3092216c745b04d90a854a6644a04e1",
+    "urdf/CyberDuck_V2_raw.urdf": "b475c97a051662f0c1caec9f363d0260a5a96a7e72949cc25a18a31064f130ea"
   },
   "model_file": {
     "path": "CyberDuck_V2.xml",
-    "sha256": "58c48863367320d27f226df48331cae20384a66c23e58d1b8fcecac1d3faa0f5"
+    "sha256": "cfa3556638f55138ed712bfdf1f5d4c318f23ce09ae0dda3c780765ff9009595"
   },
   "mesh_files": {
     "assets/base_link.STL": {
       "source_path": "meshes/base_link.STL",
-      "sha256": "3f4ba0d5eafdaf1fe01eaad2b2bc928a029fc79a3e55da36820757ef0ce793a7",
-      "size_bytes": 5482734
+      "sha256": "d51969aad7b62ed4657c53b7ab660044186369c0a3b4f7796a225eed1930ac4d",
+      "size_bytes": 3634684
     },
     "assets/head_pitch_link.STL": {
       "source_path": "meshes/head_pitch_link.STL",
-      "sha256": "bfc880d1b6919aa8a6483c3349da1dcea5397e6dc77df51133b9cc0ff039308b",
-      "size_bytes": 166684
+      "sha256": "5155394d8ec5076f59ca69dba0aed840c1dc0c8a0ec67d2d4fd2a3363fc86195",
+      "size_bytes": 219584
     },
     "assets/head_roll_link.STL": {
       "source_path": "meshes/head_roll_link.STL",
-      "sha256": "2bd63cf0fa436d936c2cdfc5a5fad350359823699b1fc536be26ed5a804c85ac",
-      "size_bytes": 4643284
+      "sha256": "f086b08e7f217d49319db23ca1751485800f1fdfd82fdf94ae9502317db686ca",
+      "size_bytes": 5266984
     },
     "assets/head_yaw_link.STL": {
       "source_path": "meshes/head_yaw_link.STL",
-      "sha256": "bafb3be51b0e89d45958668b63272f70dfd3054c053bc856889210df5be948fc",
-      "size_bytes": 1740384
+      "sha256": "f92623ccc35412bd74e241f0cc52b7de530a04666806dbb2a3bcdc059bb22dc1",
+      "size_bytes": 624084
     },
     "assets/l_ankle_link.STL": {
       "source_path": "meshes/l_ankle_link.STL",
-      "sha256": "84298ad01935c4e16227b48c3101a05881e13a431a8b358d8e962f720483c0dd",
-      "size_bytes": 176484
+      "sha256": "e2b7bd966ad5a49c74cb31abaf0473d097c49f5b0a03c527c65fdc599c3dc760",
+      "size_bytes": 203784
     },
     "assets/l_calf_link.STL": {
       "source_path": "meshes/l_calf_link.STL",
-      "sha256": "fb5275162777afcee9c5d488c53f305786d54033f66e053ec7239f427ff942e9",
-      "size_bytes": 1723784
+      "sha256": "11776eeb17c078e624a43ec65f58c99075c2955c287945adc66656377bad4c26",
+      "size_bytes": 1745484
     },
     "assets/l_hip_pitch_link.STL": {
       "source_path": "meshes/l_hip_pitch_link.STL",
-      "sha256": "743df5f21dd8835d3ed6c9a816ebb90e2eb63acf257ab39ce97b66e367609795",
-      "size_bytes": 3153184
+      "sha256": "1a885494d090c170dfc6e35a77f5395a3eb8d5e1c20b048218b96817be46c3b8",
+      "size_bytes": 3158884
     },
     "assets/l_hip_roll_link.STL": {
       "source_path": "meshes/l_hip_roll_link.STL",
-      "sha256": "5a678ebbbbf27e2e5b508cc14390dc5b5c94c4e2c87ed8fd3a046df0991e04a5",
-      "size_bytes": 154384
+      "sha256": "6b8146cf1a5a72fbf8417d641a8513e8122a0ccb6e3811636087ee66bb6dfc61",
+      "size_bytes": 100284
     },
     "assets/l_hip_yaw_link.STL": {
       "source_path": "meshes/l_hip_yaw_link.STL",
-      "sha256": "2158152884c5678346bd605cb262eb5a2b407729b860aca1240b32391f959301",
-      "size_bytes": 1705884
+      "sha256": "d1c60a6b97b98060ae15c617c390ee474d2dd29fe45fe6d5b1e2feb4bc8d9196",
+      "size_bytes": 1655584
     },
     "assets/l_roller_back_link.STL": {
       "source_path": "meshes/l_roller_back_link.STL",
-      "sha256": "9c512c5b5934f35dc7926ae2d1aa33257933ff19cb45a6ad0bfa613d84a5e46e",
-      "size_bytes": 346384
+      "sha256": "07abd6ebfe814eab489b45c1fb0c9c99ab30b569a376ba46ad177584efdb85ef",
+      "size_bytes": 342484
     },
     "assets/l_roller_front_link.STL": {
       "source_path": "meshes/l_roller_front_link.STL",
-      "sha256": "1a09e124981750f1d8f6a613f5574d49195f29c0b207256912ed95c8329ef425",
-      "size_bytes": 346384
+      "sha256": "e6a27ed77de53fa84f27d2b1c7100b49a11ba72ce17b5614427dccd8138ca4ec",
+      "size_bytes": 342484
     },
     "assets/mouth_link.STL": {
       "source_path": "meshes/mouth_link.STL",
-      "sha256": "2f2482f81f33f426bcf944c790b5f36631c38b654aa0fe54240dd5dee65b505b",
-      "size_bytes": 60584
+      "sha256": "539dd9dbe7d2014c603a5559673ba6c35c93ec3d1d7854f8b027a41b11dde22c",
+      "size_bytes": 42484
     },
     "assets/neck_pitch_link.STL": {
       "source_path": "meshes/neck_pitch_link.STL",
-      "sha256": "d5cbf2f48b1437e45fc4d18f25843f8a13694015bb6d35b82afdabb136f36497",
-      "size_bytes": 3224584
+      "sha256": "0a83ad820e9f7f478b723abcc5e3fb605536f286bff388198053856cec625f83",
+      "size_bytes": 3187284
     },
     "assets/r_ankle_link.STL": {
       "source_path": "meshes/r_ankle_link.STL",
-      "sha256": "71dde4e09df1a2ce6971d0027e5029c9861d7e68da6e03ed73a5f4e8755f4482",
-      "size_bytes": 176484
+      "sha256": "8068ff464a83e022afa2b81def71fb6675e7554de2af01f4fca59ed9043e9c19",
+      "size_bytes": 203784
     },
     "assets/r_calf_link.STL": {
       "source_path": "meshes/r_calf_link.STL",
-      "sha256": "a23a8240576587f63e3ffd2de15e8cf436c3ca948764e69b16c3e67b14d9ecfa",
-      "size_bytes": 1723984
+      "sha256": "0cc3252afa7345b744a7be3a274d3c1e5243b14b110b4d85ee0df47923871ec4",
+      "size_bytes": 1743084
     },
     "assets/r_hip_pitch_link.STL": {
       "source_path": "meshes/r_hip_pitch_link.STL",
-      "sha256": "02c1deb4493e5d934e234b0d0d4a81d0457c7c5b2466cfb77bb97a8c8b199b1c",
-      "size_bytes": 3153184
+      "sha256": "68e3824fdf715680c03aa0b42983f47e4e7e55d6b537fef35dab5d5b0a756556",
+      "size_bytes": 3158884
     },
     "assets/r_hip_roll_link.STL": {
       "source_path": "meshes/r_hip_roll_link.STL",
-      "sha256": "dd8bfb0215ce78759089ef1076d039d408568cf6a35f23366e12e9b49fe759d2",
-      "size_bytes": 154384
+      "sha256": "5aca129123c6b54d11a9e945be443c59e4f2c5818589442b4b6c9a848e4782c3",
+      "size_bytes": 100184
     },
     "assets/r_hip_yaw_link.STL": {
       "source_path": "meshes/r_hip_yaw_link.STL",
-      "sha256": "70a69882037235e970b80cee9c5c9df9c6af7dfe819844c79d718c1b792cff1c",
-      "size_bytes": 1706684
+      "sha256": "3d108d1eb6d870c24eaa06e58d83672a69cbe41c31673bbb99055edf7d07455e",
+      "size_bytes": 1656484
     },
     "assets/r_roller_back_link.STL": {
       "source_path": "meshes/r_roller_back_link.STL",
-      "sha256": "50c8dc1267ae773b21706b853ae8a1dd1e540d5dcc2298c1ccb8d4439f3225e8",
+      "sha256": "7121cc34d441e558f42d174ed5dc5521b82bf309322685b3fcd8897fff4472b6",
       "size_bytes": 346384
     },
     "assets/r_roller_front_link.STL": {
       "source_path": "meshes/r_roller_front_link.STL",
-      "sha256": "89532567e14d605b66fc5e0b0087ff7a76cdda4b842de6437d82e36c0782ee76",
+      "sha256": "d9f11abe9ae829216ee47d93dbbea58b46863b52effa8543bee3a2ef6a919f6e",
       "size_bytes": 346384
     }
   },
@@ -121,6 +127,7 @@
     "将 MJCF compiler.meshdir 从 ../meshes/ 改为同级 assets/；20 个 STL 逐字节复制。",
     "移除尾部 setup scene 段的 statistic、visual、天空与地面资源、地面及灯光；场景由 mjlab 提供。",
     "新增本地中文文件说明和版权声明，原始 MJCF 注释保留，行尾统一为 LF 并移除尾随空白。",
-    "机器人刚体、惯量、关节、碰撞体、四个 mimic 等式约束和两个踝部力矩 motor 均保留源定义。"
+    "机器人刚体、惯量、关节、碰撞体、四个 mimic 等式约束和两个踝部力矩 motor 均保留源定义。",
+    "2026-11-18 模型替换：相对 2026-11-05 导入版本，全部 20 个网格、多数刚体惯量与部分连杆偏移更新；整机质量 3.703212→3.42329628 kg，头部五连杆 1.154606→0.8665786 kg；neck_pitch 上限 2.920→1.877 rad、head_roll ±0.436→±0.208 rad、head_pitch 上限 1.570→1.571 rad；base_link 与 hip 碰撞盒尺寸同步更新。"
   ]
 }
